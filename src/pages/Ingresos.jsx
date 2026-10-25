@@ -1,0 +1,152 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
+import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+
+const vacio = () => ({ fecha: hoy(), turno: 'Mañana', medio: 'Efectivo', hermano_id: '', grupo_id: '', monto: '', comentario: '' })
+
+export default function Ingresos() {
+  const [hermanos, setHermanos] = useState([])
+  const [grupos, setGrupos] = useState([])
+  const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), grupo: '', turno: '', medio: '', texto: '' })
+  const [filas, setFilas] = useState(null)
+  const [editando, setEditando] = useState(null)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    supabase.from('hermanos').select('id,nro_sobre,nombre,apellidos,activo').order('nro_sobre').then(({ data }) => setHermanos(data || []))
+    supabase.from('grupos_ingreso').select('id,nombre,activo').order('nombre').then(({ data }) => setGrupos(data || []))
+  }, [])
+
+  const cargar = useCallback(async () => {
+    try {
+      const datos = await traerTodo(() => {
+        let q = supabase.from('v_ingresos').select('*')
+        if (f.desde) q = q.gte('fecha', f.desde)
+        if (f.hasta) q = q.lte('fecha', f.hasta)
+        if (f.grupo) q = q.eq('grupo_id', f.grupo)
+        if (f.turno) q = q.eq('turno', f.turno)
+        if (f.medio) q = q.eq('medio', f.medio)
+        return q.order('fecha', { ascending: false }).order('creado_en', { ascending: false })
+      })
+      setFilas(datos)
+    } catch (e) { setMsg({ t: 'error', m: mensajeError(e) }) }
+  }, [f.desde, f.hasta, f.grupo, f.turno, f.medio])
+  useEffect(() => { cargar() }, [cargar])
+
+  const visibles = useMemo(() => {
+    const t = f.texto.trim().toLowerCase()
+    if (!filas) return []
+    if (!t) return filas
+    return filas.filter((x) => `${x.nro_sobre} ${x.hermano_nombre} ${x.hermano_apellidos || ''} ${x.comentario || ''}`.toLowerCase().includes(t))
+  }, [filas, f.texto])
+  const total = visibles.reduce((s, x) => s + Number(x.monto), 0)
+
+  async function guardar(e) {
+    e.preventDefault()
+    const m = aNumero(editando.monto)
+    if (!editando.hermano_id || !editando.grupo_id) return setMsg({ t: 'error', m: 'Elige hermano y grupo.' })
+    if (!(m > 0)) return setMsg({ t: 'error', m: 'El monto debe ser mayor que cero.' })
+    const datos = {
+      fecha: editando.fecha, turno: editando.turno, medio: editando.medio,
+      hermano_id: editando.hermano_id, grupo_id: editando.grupo_id,
+      monto: Math.round(m * 100) / 100, comentario: editando.comentario?.trim() || null,
+    }
+    const { error } = editando.id
+      ? await supabase.from('ingresos').update(datos).eq('id', editando.id)
+      : await supabase.from('ingresos').insert(datos)
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setEditando(null); setMsg({ t: 'ok', m: 'Ingreso guardado.' }); cargar()
+  }
+
+  async function borrar(x) {
+    if (!confirm(`¿Borrar el ingreso de ${dinero(x.monto)} del ${fmtFecha(x.fecha)}?`)) return
+    const { error } = await supabase.from('ingresos').delete().eq('id', x.id)
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setEditando(null); cargar()
+  }
+
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const setE = (k) => (e) => setEditando({ ...editando, [k]: e.target.value })
+
+  return (
+    <section className="pagina">
+      <div className="titulo-accion">
+        <h1>Ingresos</h1>
+        <button className="btn btn-primario" onClick={() => setEditando(vacio())}>Nuevo ingreso</button>
+      </div>
+      <div className="filtros">
+        <Campo etiqueta="Desde"><input type="date" value={f.desde} onChange={set('desde')} /></Campo>
+        <Campo etiqueta="Hasta"><input type="date" value={f.hasta} onChange={set('hasta')} /></Campo>
+        <Campo etiqueta="Grupo">
+          <select value={f.grupo} onChange={set('grupo')}>
+            <option value="">Todos</option>
+            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+          </select>
+        </Campo>
+        <Campo etiqueta="Turno">
+          <select value={f.turno} onChange={set('turno')}><option value="">Todos</option><option>Mañana</option><option>Tarde</option></select>
+        </Campo>
+        <Campo etiqueta="Medio">
+          <select value={f.medio} onChange={set('medio')}><option value="">Todos</option><option>Efectivo</option><option>Banco</option></select>
+        </Campo>
+        <Campo etiqueta="Buscar"><input value={f.texto} onChange={set('texto')} placeholder="Sobre, nombre…" /></Campo>
+      </div>
+      <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
+
+      {!filas ? <Cargando /> : (
+        <div className="tabla-envoltura">
+          <table className="tabla">
+            <thead><tr><th>Fecha</th><th>Turno</th><th>Sobre</th><th>Hermano</th><th>Grupo</th><th>Medio</th><th className="num">Monto</th></tr></thead>
+            <tbody>
+              {visibles.map((x) => (
+                <tr key={x.id} className="clic" onClick={() => setEditando({ ...x, monto: String(x.monto).replace('.', ',') })}>
+                  <td>{fmtFecha(x.fecha)}</td><td>{x.turno}</td><td>{x.nro_sobre}</td>
+                  <td>{x.hermano_nombre} {x.hermano_apellidos}</td><td>{x.grupo}</td><td>{x.medio}</td>
+                  <td className="num">{dinero(x.monto)}</td>
+                </tr>
+              ))}
+              {visibles.length === 0 && <tr><td colSpan="7" className="tenue">No hay ingresos con estos filtros.</td></tr>}
+            </tbody>
+            <tfoot><tr><td colSpan="6">{visibles.length} movimientos</td><td className="num">{dinero(total)}</td></tr></tfoot>
+          </table>
+        </div>
+      )}
+
+      {editando && (
+        <Modal titulo={editando.id ? 'Editar ingreso' : 'Nuevo ingreso'} onCerrar={() => setEditando(null)}>
+          <form className="formulario" onSubmit={guardar}>
+            <Campo etiqueta="Fecha"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
+            <Campo etiqueta="Turno">
+              <select value={editando.turno} onChange={setE('turno')}><option>Mañana</option><option>Tarde</option></select>
+            </Campo>
+            <Campo etiqueta="Hermano" ancho="completo">
+              <select required value={editando.hermano_id} onChange={setE('hermano_id')}>
+                <option value="">Elige…</option>
+                {hermanos.filter((h) => h.activo || h.id === editando.hermano_id).map((h) =>
+                  <option key={h.id} value={h.id}>{h.nro_sobre} · {h.nombre} {h.apellidos}</option>)}
+              </select>
+            </Campo>
+            <Campo etiqueta="Grupo" ancho="completo">
+              <select required value={editando.grupo_id} onChange={setE('grupo_id')}>
+                <option value="">Elige…</option>
+                {grupos.filter((g) => g.activo || g.id === editando.grupo_id).map((g) =>
+                  <option key={g.id} value={g.id}>{g.nombre}</option>)}
+              </select>
+            </Campo>
+            <Campo etiqueta="Medio">
+              <select value={editando.medio} onChange={setE('medio')}><option>Efectivo</option><option>Banco</option></select>
+            </Campo>
+            <Campo etiqueta="Monto"><input inputMode="decimal" required value={editando.monto} onChange={setE('monto')} /></Campo>
+            <Campo etiqueta="Comentario" ancho="completo"><input value={editando.comentario || ''} onChange={setE('comentario')} /></Campo>
+            <div className="botonera">
+              {editando.id && <button type="button" className="btn btn-peligro" onClick={() => borrar(editando)}>Borrar</button>}
+              <span className="espacio" />
+              <button type="button" className="btn btn-suave" onClick={() => setEditando(null)}>Cancelar</button>
+              <button className="btn btn-primario">Guardar ingreso</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </section>
+  )
+}
