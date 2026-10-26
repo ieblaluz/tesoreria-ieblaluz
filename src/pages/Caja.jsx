@@ -4,9 +4,14 @@ import { Aviso } from '../components/ui'
 import Combobox from '../components/Combobox'
 import ReporteCulto from '../components/ReporteCulto'
 
+const nombreContador = (c) => c.contadores?.nombre || c.nombre_libre || ''
 const nombreH = (h) => `${h.nombre} ${h.apellidos || ''}`.trim()
 
-export default function Caja({ perfil, config }) {
+export default function Caja({ perfil, config, esTesorero }) {
+  const [contadores, setContadores] = useState([])
+  const [contadorId, setContadorId] = useState(perfil.contador_id || '')
+  const [contaron, setContaron] = useState([])
+  const [ayudante, setAyudante] = useState('')
   const [activo, setActivo] = useState(0)
   const [reporte, setReporte] = useState(false)
   const [hermanos, setHermanos] = useState([])
@@ -28,6 +33,8 @@ export default function Caja({ perfil, config }) {
   useEffect(() => {
     supabase.from('hermanos').select('id,nro_sobre,nombre,apellidos').eq('activo', true).order('nro_sobre')
       .then(({ data }) => setHermanos(data || []))
+    supabase.from('contadores').select('id,nombre,activo').order('nombre')
+      .then(({ data }) => setContadores(data || []))
     supabase.from('grupos_ingreso').select('id,nombre').eq('activo', true).order('nombre')
       .then(({ data }) => {
         setGrupos(data || [])
@@ -41,6 +48,9 @@ export default function Caja({ perfil, config }) {
       .eq('fecha', fecha).eq('turno', turno).order('creado_en', { ascending: false })
     if (error) setMsg({ t: 'error', m: mensajeError(error) })
     setLineas(data || [])
+    const { data: t } = await supabase.from('tablon_semanal').select('id,contador_id,nombre_libre,creado_por,creado_en,contadores(nombre)')
+      .eq('fecha', fecha).eq('turno', turno)
+    setContaron(t || [])
   }, [fecha, turno])
   useEffect(() => { cargar() }, [cargar])
 
@@ -86,11 +96,26 @@ export default function Caja({ perfil, config }) {
     })
     setGuardando(false)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    // Deja constancia en el tablón de quién contó este culto (si ya estaba, no se repite)
+    const anotar = []
+    if (contadorId && !contaron.some((c) => c.contador_id === contadorId)) anotar.push({ fecha, turno, contador_id: contadorId })
+    const ay = ayudante.trim()
+    if (ay && !contaron.some((c) => nombreContador(c).toLowerCase() === ay.toLowerCase())) anotar.push({ fecha, turno, nombre_libre: ay })
+    for (const fila of anotar) await supabase.from('tablon_semanal').insert(fila) // un duplicado simplemente se ignora
     setMsg({ t: 'ok', m: `Registrado: ${dinero(m)} de ${nombreH(hermano)}` })
     setBusca(''); setHermano(null); setMonto(''); setComentario('')
     refBusca.current?.focus()
     cargar()
   }
+
+  async function quitarDelTablon(c) {
+    if (!confirm(`¿Quitar a ${nombreContador(c)} de este culto?`)) return
+    const { data, error } = await supabase.from('tablon_semanal').delete().eq('id', c.id).select('id')
+    if (error || !data?.length) return setMsg({ t: 'error', m: 'No se pudo quitar. Solo puede corregirlo quien lo anotó, el mismo día.' })
+    cargar()
+  }
+  const hoyLocal = hoy()
+  const puedeQuitar = (c) => c.creado_por === perfil.id && new Date(c.creado_en).toLocaleDateString('sv-SE') === hoyLocal
 
   async function borrar(l) {
     if (!confirm(`¿Borrar ${dinero(l.monto)} de ${l.hermano_nombre}?`)) return
@@ -127,6 +152,22 @@ export default function Caja({ perfil, config }) {
           <span className="campo-etiqueta">Grupo</span>
           <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
             onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)} />
+        </label>
+        <div className="campo">
+          <span className="campo-etiqueta">Contador</span>
+          {esTesorero ? (
+            <Combobox permitirVacio etiquetaVacio="Sin indicar" valor={contadorId} onCambio={setContadorId}
+              opciones={contadores.filter((c) => c.activo || c.id === contadorId).map((c) => ({ id: c.id, etiqueta: c.nombre }))} />
+          ) : (
+            <div className="contador-fijo">
+              {contadores.find((c) => c.id === contadorId)?.nombre
+                || <span className="campo-error">Tu usuario no está vinculado a un contador. Avisa al tesorero.</span>}
+            </div>
+          )}
+        </div>
+        <label className="campo">
+          <span className="campo-etiqueta">Ayudante (opcional)</span>
+          <input value={ayudante} onChange={(e) => setAyudante(e.target.value)} placeholder="Si alguien más ayudó a contar" />
         </label>
       </div>
 
@@ -183,6 +224,16 @@ export default function Caja({ perfil, config }) {
               <span>Banco {dinero(porMedio('Banco'))}</span>
             </div>
           </div>
+          {contaron.length > 0 && (
+            <div className="contaron">
+              <span className="tenue">Contaron:</span>
+              <span className="chips">{contaron.map((c) => (
+                <span key={c.id} className="chip">{nombreContador(c)}
+                  {puedeQuitar(c) && <button type="button" aria-label={`Quitar a ${nombreContador(c)}`} onClick={() => quitarDelTablon(c)}>✕</button>}
+                </span>
+              ))}</span>
+            </div>
+          )}
           {porGrupo.length > 1 && (
             <ul className="desglose">
               {porGrupo.map(([g, v]) => <li key={g}><span>{g}</span><span>{dinero(v)}</span></li>)}

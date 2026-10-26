@@ -8,12 +8,12 @@ import ReporteCulto from '../components/ReporteCulto'
 export default function Tablon({ config }) {
   const [contadores, setContadores] = useState([])
   const [registros, setRegistros] = useState([])
-  const [form, setForm] = useState({ fecha: hoy(), turno: new Date().getHours() < 15 ? 'Mañana' : 'Tarde', contador_id: '' })
+  const [form, setForm] = useState({ fecha: hoy(), turno: new Date().getHours() < 15 ? 'Mañana' : 'Tarde', contador_id: '', ayudante: '' })
   const [reporte, setReporte] = useState(null)
   const [msg, setMsg] = useState(null)
 
   const cargar = useCallback(async () => {
-    const { data } = await supabase.from('tablon_semanal').select('id,fecha,turno,contador_id,contadores(nombre)')
+    const { data } = await supabase.from('tablon_semanal').select('id,fecha,turno,contador_id,nombre_libre,contadores(nombre)')
       .order('fecha', { ascending: false }).limit(160)
     setRegistros(data || [])
   }, [])
@@ -31,20 +31,25 @@ export default function Tablon({ config }) {
       const k = r.fecha + r.turno
       if (!m.has(k)) m.set(k, { fecha: r.fecha, turno: r.turno, personas: [] })
       const c = m.get(k)
-      if (!c.personas.some((p) => p.contador_id === r.contador_id)) c.personas.push({ id: r.id, contador_id: r.contador_id, nombre: r.contadores?.nombre })
+      const nombre = r.contadores?.nombre || r.nombre_libre
+      if (!c.personas.some((p) => p.nombre === nombre)) c.personas.push({ id: r.id, nombre, ayudante: !r.contador_id })
     }
     return [...m.values()].sort((a, b) => (b.fecha + (b.turno === 'Tarde' ? 1 : 0)).localeCompare(a.fecha + (a.turno === 'Tarde' ? 1 : 0)))
   }, [registros])
 
   async function registrar(e) {
     e.preventDefault()
-    if (!form.contador_id) return setMsg({ t: 'error', m: 'Elige quién contó.' })
-    const ya = registros.some((r) => r.fecha === form.fecha && r.turno === form.turno && r.contador_id === form.contador_id)
-    if (ya) return setMsg({ t: 'error', m: 'Esa persona ya está registrada en ese culto.' })
-    const { error } = await supabase.from('tablon_semanal').insert(form)
-    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    const ay = form.ayudante.trim()
+    if (!form.contador_id && !ay) return setMsg({ t: 'error', m: 'Elige un contador o escribe el nombre del ayudante.' })
+    const filas = []
+    if (form.contador_id) filas.push({ fecha: form.fecha, turno: form.turno, contador_id: form.contador_id })
+    if (ay) filas.push({ fecha: form.fecha, turno: form.turno, nombre_libre: ay })
+    for (const f of filas) {
+      const { error } = await supabase.from('tablon_semanal').insert(f)
+      if (error) return setMsg({ t: 'error', m: error.code === '23505' ? 'Esa persona ya está registrada en ese culto.' : mensajeError(error) })
+    }
     setMsg({ t: 'ok', m: 'Registrado en el tablón. Puedes añadir a otra persona o ver el reporte.' })
-    setForm({ ...form, contador_id: '' })
+    setForm({ ...form, contador_id: '', ayudante: '' })
     cargar()
   }
 
@@ -65,6 +70,9 @@ export default function Tablon({ config }) {
         <Campo etiqueta="Contó">
           <Combobox valor={form.contador_id} onCambio={(v) => setForm({ ...form, contador_id: v })}
             opciones={contadores.map((c) => ({ id: c.id, etiqueta: c.nombre }))} />
+        </Campo>
+        <Campo etiqueta="Ayudante (opcional)">
+          <input value={form.ayudante} onChange={(e) => setForm({ ...form, ayudante: e.target.value })} placeholder="Si no está en la lista" />
         </Campo>
         <div className="botones-fila">
           <button className="btn btn-primario">Registrar</button>

@@ -19,13 +19,16 @@ export default function Usuarios({ perfil }) {
   const [nuevo, setNuevo] = useState(null)
   const [clave, setClave] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [contadores, setContadores] = useState([])
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.from('perfiles').select('*').order('nombre')
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setLista(data || [])
   }, [])
-  useEffect(() => { cargar() }, [cargar])
+  const cargarContadores = useCallback(() =>
+    supabase.from('contadores').select('id,nombre,activo').order('nombre').then(({ data }) => setContadores(data || [])), [])
+  useEffect(() => { cargar(); cargarContadores() }, [cargar, cargarContadores])
 
   async function actualizar(u, cambios) {
     const { error } = await supabase.from('perfiles').update(cambios).eq('id', u.id)
@@ -44,7 +47,7 @@ export default function Usuarios({ perfil }) {
     try {
       await api({ accion: 'crear', ...nuevo })
       setMsg({ t: 'ok', m: `Usuario "${nuevo.usuario.trim().toLowerCase()}" creado. Pásale su usuario y clave.` })
-      setNuevo(null); cargar()
+      setNuevo(null); cargar(); cargarContadores()
     } catch (er) { setMsg({ t: 'error', m: er.message }) }
   }
 
@@ -61,7 +64,7 @@ export default function Usuarios({ perfil }) {
       <div className="titulo-accion">
         <h1>Usuarios</h1>
         <span className="espacio" />
-        <button className="btn btn-primario" onClick={() => setNuevo({ usuario: '', nombre: '', clave: '', rol: 'contador', ver_historial: false })}>
+        <button className="btn btn-primario" onClick={() => setNuevo({ usuario: '', nombre: '', clave: '', rol: 'contador', ver_historial: false, crear_contador: true })}>
           Nuevo usuario
         </button>
       </div>
@@ -70,7 +73,7 @@ export default function Usuarios({ perfil }) {
       {!lista ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Ve historial de ingresos</th><th /></tr></thead>
+            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Contador vinculado</th><th>Ve historial de ingresos</th><th /></tr></thead>
             <tbody>
               {lista.map((u) => {
                 const yo = u.id === perfil.id
@@ -81,6 +84,12 @@ export default function Usuarios({ perfil }) {
                     <td>
                       <select value={u.rol} disabled={yo} onChange={(e) => actualizar(u, { rol: e.target.value })}>
                         <option value="contador">Contador</option><option value="tesorero">Tesorero</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select value={u.contador_id || ''} onChange={(e) => actualizar(u, { contador_id: e.target.value || null })}>
+                        <option value="">Ninguno</option>
+                        {contadores.filter((c) => c.activo || c.id === u.contador_id).map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                       </select>
                     </td>
                     <td>
@@ -122,6 +131,8 @@ export default function Usuarios({ perfil }) {
               <label className="check campo-completo"><input type="checkbox" checked={nuevo.ver_historial}
                 onChange={(e) => setNuevo({ ...nuevo, ver_historial: e.target.checked })} /> Puede ver el historial completo de ingresos</label>
             )}
+            <label className="check campo-completo"><input type="checkbox" checked={nuevo.crear_contador}
+              onChange={(e) => setNuevo({ ...nuevo, crear_contador: e.target.checked })} /> Añadirlo a la lista de contadores y vincularlo (su nombre saldrá en el tablón al registrar ingresos)</label>
             <div className="botonera"><span className="espacio" />
               <button type="button" className="btn btn-suave" onClick={() => setNuevo(null)}>Cancelar</button>
               <button className="btn btn-primario">Crear usuario</button>
