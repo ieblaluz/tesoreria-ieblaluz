@@ -33,7 +33,7 @@ export default function Login({ config, aviso, limpiarAviso }) {
   return (
     <div className="login">
       <form className="login-caja" onSubmit={entrar}>
-        <img className="login-logo" src={config?.logo_url || '/icon-192.png'} alt="" />
+        <img className="login-logo" src={config?.icono_192_url || '/icon-192.png'} alt="" />
         <h1>{config?.nombre_app || 'Tesorería'}</h1>
         <p className="login-iglesia">{config?.nombre_iglesia}</p>
         <Aviso>{aviso || error}</Aviso>
