@@ -175,7 +175,9 @@ input[type="color"] { width: 52px; padding: 2px; }
 .login-iglesia { text-align: center; margin: -.75rem 0 .25rem; color: var(--tenue); font-size: .9rem; }
 
 /* ---------- Caja (registro de ingresos) ---------- */
-.caja-culto { display: grid; grid-template-columns: 180px auto 1fr; gap: 1rem; align-items: end; margin-bottom: 1.25rem; }
+.caja-culto { display: grid; grid-template-columns: 170px auto repeat(3, 1fr); gap: 1rem; align-items: end; margin-bottom: 1.25rem; }
+.contador-fijo { min-height: 40px; display: flex; align-items: center; font-weight: 700; color: var(--primario); }
+.contaron { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; font-size: .9rem; }
 .caja-cuerpo { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 1.25rem; align-items: start; }
 .caja-entrada { display: grid; gap: .9rem; margin: 0; }
 .caja-hermano { min-height: 2.25rem; }
@@ -203,7 +205,7 @@ input[type="color"] { width: 52px; padding: 2px; }
 .nota { font-size: .85rem; margin-top: .5rem; }
 @media (max-width: 900px) {
   .caja-culto { grid-template-columns: 1fr 1fr; }
-  .caja-culto > :last-child { grid-column: 1 / -1; }
+  .caja-culto > :nth-child(n+3) { grid-column: 1 / -1; }
   .caja-cuerpo { grid-template-columns: 1fr; }
   .caja-ticket { order: -1; }
 }
