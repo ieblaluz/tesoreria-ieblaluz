@@ -9,11 +9,16 @@ export function Documento({ config, titulo, meta = [], children }) {
     <article className="doc">
       <header className="doc-cab">
         <div className="doc-entidad">
-          {config?.logo_url && <img className="doc-logo" src={config.logo_url} alt="" />}
-          <div>
-            <div className="doc-iglesia">{config?.nombre_iglesia}</div>
-            <div className="doc-area">{config?.nombre_app || 'Tesorería'}</div>
-          </div>
+          {config?.logo_reporte_url && (
+            <img className="doc-logo" src={config.logo_reporte_url} alt=""
+              style={{ height: `${config.logo_reporte_alto || 60}px` }} />
+          )}
+          {(config?.reporte_mostrar_nombre ?? true) && (
+            <div>
+              <div className="doc-iglesia">{config?.nombre_iglesia}</div>
+              <div className="doc-area">{config?.nombre_app || 'Tesorería'}</div>
+            </div>
+          )}
         </div>
         <dl className="doc-meta">
           {meta.map(([k, v]) => (

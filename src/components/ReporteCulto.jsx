@@ -30,7 +30,7 @@ export default function ReporteCulto({ fecha, turno, config, onCerrar }) {
   const total = r ? Number(r.efectivo) + Number(r.banco) : 0
   const firmantes = [
     ...(r?.contadores?.length ? r.contadores.map((n) => ({ nombre: n, rol: 'Contador' })) : [{ rol: 'Contador' }]),
-    { rol: 'Tesorero(a)' },
+    { nombre: config?.tesorero_nombre, rol: 'Tesorero(a)' },
   ]
 
   return (
