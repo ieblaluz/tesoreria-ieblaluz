@@ -312,12 +312,29 @@ input[type="color"] { width: 52px; padding: 2px; }
 .vista-mini .vista-hoja { min-height: 0; padding: 28px 36px; }
 
 /* ---------- Módulo de reportes ---------- */
-.reportes-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; align-items: start; }
-.reporte-tarjeta { display: grid; gap: 1rem; margin: 0; }
-.reporte-tarjeta h2 { margin-bottom: .25rem; }
-.reporte-tarjeta p { margin: 0; font-size: .9rem; }
-.reporte-campos { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1rem; }
-@media (max-width: 480px) { .reporte-campos { grid-template-columns: 1fr; } }
+.reportes-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; }
+.reporte-acceso {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; text-align: left;
+  background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 1.1rem 1.2rem; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.reporte-acceso:hover { border-color: var(--primario); box-shadow: 0 2px 10px rgba(16,24,40,.08); }
+.reporte-icono { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font-size: 1.3rem;
+  color: var(--primario); background: color-mix(in srgb, var(--primario) 9%, #fff); }
+.reporte-texto { display: grid; gap: .2rem; }
+.reporte-texto strong { font-size: 1.02rem; }
+.reporte-texto span { color: var(--tenue); font-size: .9rem; }
+.reporte-flecha { font-size: 1.6rem; color: #98A2B3; }
+.migas { display: flex; align-items: center; gap: .4rem; color: var(--tenue); font-size: .9rem; margin-bottom: .4rem; }
+.migas .btn-texto { padding: 0; }
+.seccion-descripcion { margin: -.25rem 0 1rem; }
+.botones-fila { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chip { display: inline-flex; align-items: center; gap: .3rem; background: #EEF3F9; color: var(--primario); border-radius: 999px; padding: .15rem .65rem; font-size: .88rem; font-weight: 600; }
+.chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0 .1rem; font-size: .75rem; opacity: .6; }
+.chip button:hover { opacity: 1; color: var(--neg); }
+.enlace { color: var(--primario); font-weight: 600; font-size: .9rem; }
+@media (prefers-reduced-motion: reduce) { .reporte-acceso { transition: none; } }
 
 /* Datos del destinatario dentro de un documento */
 .doc-datos { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin: 0 0 22px; padding: 10px 0; border-top: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC; }

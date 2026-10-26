@@ -3,7 +3,6 @@ import { supabase, setMoneda } from './supabase'
 import { Cargando } from './components/ui'
 import Login from './pages/Login'
 import Caja from './pages/Caja'
-import Tablon from './pages/Tablon'
 import Resumen from './pages/Resumen'
 import Ingresos from './pages/Ingresos'
 import Gastos from './pages/Gastos'
@@ -18,11 +17,10 @@ const TODOS = ['tesorero', 'contador']
 const MENU = [
   { id: 'resumen', label: 'Resumen', roles: ['tesorero'], C: Resumen },
   { id: 'caja', label: 'Registrar ingresos', roles: TODOS, C: Caja },
-  { id: 'tablon', label: 'Tablón del culto', roles: TODOS, C: Tablon },
   { id: 'ingresos', label: 'Ingresos', roles: ['tesorero'], C: Ingresos },
   { id: 'gastos', label: 'Gastos', roles: ['tesorero'], C: Gastos },
   { id: 'presupuesto', label: 'Presupuesto', roles: ['tesorero'], C: Presupuesto },
-  { id: 'reportes', label: 'Reportes', roles: ['tesorero'], C: Reportes },
+  { id: 'reportes', label: 'Reportes', roles: TODOS, C: Reportes },
   { id: 'catalogos', label: 'Catálogos', roles: ['tesorero'], C: Catalogos, separador: true },
   { id: 'usuarios', label: 'Usuarios', roles: ['tesorero'], C: Usuarios },
   { id: 'configuracion', label: 'Configuración', roles: ['tesorero'], C: Configuracion },
