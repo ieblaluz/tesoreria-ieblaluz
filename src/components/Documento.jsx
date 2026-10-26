@@ -49,8 +49,9 @@ export function Firmas({ firmantes }) {
 }
 
 // Nombre de archivo para todos los reportes: "Reporte - <nombre> - AAAAMMDD"
-export const nombreReporte = (nombre, fecha) =>
-  `Reporte - ${nombre}${fecha ? ' - ' + fecha.slice(0, 10).replaceAll('-', '') : ''}`
+const compacta = (f) => f.slice(0, 10).replaceAll('-', '')
+export const nombreReporte = (nombre, fecha, fechaFin) =>
+  `Reporte - ${nombre}${fecha ? ' - ' + compacta(fecha) : ''}${fechaFin ? '_' + compacta(fechaFin) : ''}`
 
 // Vista previa + copia oculta que es lo único que se imprime.
 // archivo: nombre propuesto al "Guardar como PDF" (el navegador usa el título de la página)
