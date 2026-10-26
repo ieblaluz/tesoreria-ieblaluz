@@ -12,6 +12,7 @@ import Catalogos from './pages/Catalogos'
 import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
 import Perfil from './pages/Perfil'
+import Reportes from './pages/Reportes'
 
 const TODOS = ['tesorero', 'contador']
 const MENU = [
@@ -21,6 +22,7 @@ const MENU = [
   { id: 'ingresos', label: 'Ingresos', roles: ['tesorero'], C: Ingresos },
   { id: 'gastos', label: 'Gastos', roles: ['tesorero'], C: Gastos },
   { id: 'presupuesto', label: 'Presupuesto', roles: ['tesorero'], C: Presupuesto },
+  { id: 'reportes', label: 'Reportes', roles: ['tesorero'], C: Reportes },
   { id: 'catalogos', label: 'Catálogos', roles: ['tesorero'], C: Catalogos, separador: true },
   { id: 'usuarios', label: 'Usuarios', roles: ['tesorero'], C: Usuarios },
   { id: 'configuracion', label: 'Configuración', roles: ['tesorero'], C: Configuracion },

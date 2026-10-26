@@ -263,7 +263,7 @@ input[type="color"] { width: 52px; padding: 2px; }
 .doc-meta { margin: 0; display: grid; gap: 2px; text-align: right; }
 .doc-meta div { display: flex; justify-content: flex-end; gap: 10px; }
 .doc-meta dt { color: #475467; font-size: 12px; }
-.doc-meta dd { margin: 0; font-weight: 700; min-width: 86px; font-variant-numeric: tabular-nums; }
+.doc-meta dd { margin: 0; font-weight: 700; min-width: 86px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .doc-titulo { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 22px 0 14px; }
 .doc-subtitulo { font-size: 13px; font-weight: 700; margin: 0 0 6px; }
 
@@ -310,3 +310,16 @@ input[type="color"] { width: 52px; padding: 2px; }
 .ajuste-logo { margin-bottom: 1rem; align-items: end; }
 .ajuste-logo input[type="range"] { padding: 0; min-height: 0; border: 0; accent-color: var(--primario); }
 .vista-mini .vista-hoja { min-height: 0; padding: 28px 36px; }
+
+/* ---------- Módulo de reportes ---------- */
+.reportes-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; align-items: start; }
+.reporte-tarjeta { display: grid; gap: 1rem; margin: 0; }
+.reporte-tarjeta h2 { margin-bottom: .25rem; }
+.reporte-tarjeta p { margin: 0; font-size: .9rem; }
+.reporte-campos { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1rem; }
+@media (max-width: 480px) { .reporte-campos { grid-template-columns: 1fr; } }
+
+/* Datos del destinatario dentro de un documento */
+.doc-datos { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin: 0 0 22px; padding: 10px 0; border-top: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC; }
+.doc-datos dt { color: #475467; font-size: 11.5px; }
+.doc-datos dd { margin: 0; font-weight: 700; }
