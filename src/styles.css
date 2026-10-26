@@ -340,3 +340,14 @@ input[type="color"] { width: 52px; padding: 2px; }
 .doc-datos { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin: 0 0 22px; padding: 10px 0; border-top: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC; }
 .doc-datos dt { color: #475467; font-size: 11.5px; }
 .doc-datos dd { margin: 0; font-weight: 700; }
+
+/* ---------- Páginas con tabla: cabecera y filtros fijos, solo se desplaza la tabla ---------- */
+@media (min-width: 861px) {
+  .contenido:has(> .con-tabla) { padding-bottom: 1.5rem; }
+  .pagina.con-tabla { display: flex; flex-direction: column; height: calc(100dvh - 3.5rem); }
+  .con-tabla > *, .con-tabla .flex-resto > * { flex-shrink: 0; }
+  .con-tabla .flex-resto { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .con-tabla .tabla-envoltura { flex: 1 1 auto; min-height: 120px; overflow: auto; flex-shrink: 1; }
+  .con-tabla .tabla thead th { position: sticky; top: 0; z-index: 2; }
+  .con-tabla .tabla tfoot td, .con-tabla .tabla tfoot th { position: sticky; bottom: 0; z-index: 2; }
+}
