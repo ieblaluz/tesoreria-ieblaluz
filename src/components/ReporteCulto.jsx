@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, fmtFecha, mensajeError } from '../supabase'
 import { Aviso, Cargando } from './ui'
-import { Documento, Firmas, VistaDocumento } from './Documento'
+import { Documento, Firmas, VistaDocumento, nombreReporte } from './Documento'
 
 const importe = (n) => (Number(n) ? dinero(n) : '–')
 
@@ -34,7 +34,8 @@ export default function ReporteCulto({ fecha, turno, config, onCerrar }) {
   ]
 
   return (
-    <VistaDocumento titulo={`Reporte del culto · ${fmtFecha(fecha)} ${turno.toLowerCase()}`} onCerrar={onCerrar} listo={!!r}>
+    <VistaDocumento titulo={`Reporte del culto · ${fmtFecha(fecha)} ${turno.toLowerCase()}`} archivo={nombreReporte(`Tablon Semanal ${turno}`, fecha)}
+      onCerrar={onCerrar} listo={!!r}>
       {error && <Aviso>{error}</Aviso>}
       {!r ? (!error && <Cargando />) : (
         <Documento config={config} titulo="Reporte de ingresos del culto"

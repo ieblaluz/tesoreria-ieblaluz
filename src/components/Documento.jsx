@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal } from './ui'
 
@@ -47,8 +48,20 @@ export function Firmas({ firmantes }) {
   )
 }
 
-// Ventana de vista previa + copia oculta que es lo único que se imprime
-export function VistaDocumento({ titulo, onCerrar, listo, children }) {
+// Nombre de archivo para todos los reportes: "Reporte - <nombre> - AAAAMMDD"
+export const nombreReporte = (nombre, fecha) =>
+  `Reporte - ${nombre}${fecha ? ' - ' + fecha.slice(0, 10).replaceAll('-', '') : ''}`
+
+// Vista previa + copia oculta que es lo único que se imprime.
+// archivo: nombre propuesto al "Guardar como PDF" (el navegador usa el título de la página)
+export function VistaDocumento({ titulo, archivo, onCerrar, listo, children }) {
+  useEffect(() => {
+    if (!archivo) return
+    const anterior = document.title
+    document.title = archivo
+    return () => { document.title = anterior }
+  }, [archivo])
+
   return (
     <>
       <Modal titulo={titulo} onCerrar={onCerrar} ancho="920px">
