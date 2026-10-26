@@ -75,7 +75,7 @@ export default function Presupuesto() {
   const pct = (e, m) => (m > 0 ? Math.min(100, (e / m) * 100) : e > 0 ? 100 : 0)
 
   return (
-    <section className="pagina">
+    <section className="pagina con-tabla">
       <div className="titulo-accion">
         <h1>Presupuesto</h1>
         <select className="selector-anio" value={anio} onChange={(e) => setAnio(Number(e.target.value))} aria-label="Año">

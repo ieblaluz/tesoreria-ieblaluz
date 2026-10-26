@@ -46,7 +46,7 @@ export default function Recibos({ config }) {
   const total = visibles.reduce((s, h) => s + h.total, 0)
 
   return (
-    <div>
+    <div className="flex-resto">
       <div className="filtros">
         <Campo etiqueta="Desde"><input type="date" value={f.desde} onChange={(e) => setF({ ...f, desde: e.target.value })} /></Campo>
         <Campo etiqueta="Hasta"><input type="date" value={f.hasta} onChange={(e) => setF({ ...f, hasta: e.target.value })} /></Campo>

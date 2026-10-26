@@ -70,7 +70,7 @@ export default function Ingresos() {
   const setE = (k) => (e) => setEditando({ ...editando, [k]: e.target.value })
 
   return (
-    <section className="pagina">
+    <section className="pagina con-tabla">
       <div className="titulo-accion">
         <h1>Ingresos</h1>
         <button className="btn btn-primario" onClick={() => setEditando(vacio())}>Nuevo ingreso</button>

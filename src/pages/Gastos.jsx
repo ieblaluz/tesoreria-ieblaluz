@@ -109,7 +109,7 @@ export default function Gastos() {
   const activos = (lista, actual) => lista.filter((x) => x.activo || x.id === actual)
 
   return (
-    <section className="pagina">
+    <section className="pagina con-tabla">
       <div className="titulo-accion">
         <h1>Gastos</h1>
         <button className="btn btn-primario" onClick={() => abrir(null)}>Nuevo gasto</button>

@@ -49,7 +49,7 @@ export default function Tablon({ config }) {
   }
 
   return (
-    <div>
+    <div className="flex-resto">
       <form className="panel fila-campos" onSubmit={registrar}>
         <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
         <Campo etiqueta="Fecha">

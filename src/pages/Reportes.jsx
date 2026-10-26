@@ -38,7 +38,7 @@ export default function Reportes(props) {
 
   const Seccion = seccion.C
   return (
-    <section className="pagina">
+    <section className="pagina con-tabla">
       {disponibles.length > 1 && (
         <nav className="migas" aria-label="Ruta">
           <button className="btn-texto" onClick={() => setActual(null)}>Reportes</button>

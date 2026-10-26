@@ -39,7 +39,7 @@ const etiquetaRef = { cuentas: (c) => `${c.nro} · ${c.ministerio}` }
 export default function Catalogos() {
   const [actual, setActual] = useState(CATALOGOS[0])
   return (
-    <section className="pagina">
+    <section className="pagina con-tabla">
       <h1>Catálogos</h1>
       <div className="pestanas" role="tablist">
         {CATALOGOS.map((c) => (
@@ -96,7 +96,7 @@ function Catalogo({ def }) {
   const titulos = Object.fromEntries(def.campos.map((c) => [c.k, c.l]))
 
   return (
-    <div>
+    <div className="flex-resto">
       <div className="titulo-accion">
         <input className="buscador" placeholder={`Buscar ${def.titulo.toLowerCase()}…`} value={texto} onChange={(e) => setTexto(e.target.value)} />
         <label className="check"><input type="checkbox" checked={verInactivos} onChange={(e) => setVerInactivos(e.target.checked)} /> Ver desactivados</label>
