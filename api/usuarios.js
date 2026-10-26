@@ -36,8 +36,19 @@ export default async function handler(req, res) {
         email: `${usuario}@${DOMINIO}`, password: b.clave, email_confirm: true, user_metadata: { nombre },
       })
       if (error) throw error
+      // Opcional: vincularlo a la lista de contadores (reutiliza uno con el mismo nombre)
+      let contador_id = null
+      if (b.crear_contador) {
+        const { data: existente } = await admin.from('contadores').select('id').ilike('nombre', nombre).limit(1)
+        if (existente?.length) contador_id = existente[0].id
+        else {
+          const { data: nuevoC, error: e3 } = await admin.from('contadores').insert({ nombre }).select('id').single()
+          if (e3) throw e3
+          contador_id = nuevoC.id
+        }
+      }
       const { error: e2 } = await admin.from('perfiles').update({
-        nombre, usuario, rol: b.rol === 'tesorero' ? 'tesorero' : 'contador', ver_historial: !!b.ver_historial,
+        nombre, usuario, rol: b.rol === 'tesorero' ? 'tesorero' : 'contador', ver_historial: !!b.ver_historial, contador_id,
       }).eq('id', data.user.id)
       if (e2) throw e2
       return res.json({ ok: true })
