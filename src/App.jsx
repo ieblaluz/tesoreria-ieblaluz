@@ -42,6 +42,9 @@ export default function App() {
     setMoneda(data.moneda)
     document.documentElement.style.setProperty('--primario', data.color_primario || '#1F3A5F')
     document.title = `${data.nombre_app} · ${data.nombre_iglesia}`
+    const icono = data.icono_192_url || '/icon-192.png'
+    document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach((l) => { l.href = icono })
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', data.color_primario || '#1F3A5F')
   }, [])
 
   useEffect(() => {
@@ -83,9 +86,7 @@ export default function App() {
 
       <aside className={'lateral' + (menuAbierto ? ' abierto' : '')}>
         <div className="marca">
-          {config?.logo_url
-            ? <img src={config.logo_url} alt="" />
-            : <img src="/icon-192.png" alt="" />}
+          <img src={config?.icono_192_url || '/icon-192.png'} alt="" />
           <div>
             <strong>{config?.nombre_app || 'Tesorería'}</strong>
             <small>{config?.nombre_iglesia}</small>

@@ -257,7 +257,7 @@ input[type="color"] { width: 52px; padding: 2px; }
 .doc { color: #101828; font-size: 13px; line-height: 1.45; }
 .doc-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; padding-bottom: 14px; border-bottom: 1.5px solid #101828; }
 .doc-entidad { display: flex; align-items: center; gap: 14px; }
-.doc-logo { max-height: 56px; max-width: 160px; object-fit: contain; }
+.doc-logo { width: auto; max-width: 320px; object-fit: contain; }
 .doc-iglesia { font-weight: 700; font-size: 14px; }
 .doc-area { color: #475467; font-size: 12px; }
 .doc-meta { margin: 0; display: grid; gap: 2px; text-align: right; }
@@ -302,3 +302,11 @@ input[type="color"] { width: 52px; padding: 2px; }
   .doc-tabla tr { break-inside: avoid; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ---------- Configuración de logos ---------- */
+.icono-muestra { width: 88px; height: 88px; border-radius: 18px; border: 1px solid var(--linea); object-fit: cover; background: #fff; }
+.logo-acciones { display: grid; gap: .75rem; }
+.logo-acciones.fila { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.ajuste-logo { margin-bottom: 1rem; align-items: end; }
+.ajuste-logo input[type="range"] { padding: 0; min-height: 0; border: 0; accent-color: var(--primario); }
+.vista-mini .vista-hoja { min-height: 0; padding: 28px 36px; }
