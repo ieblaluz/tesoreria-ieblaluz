@@ -228,3 +228,60 @@ input[type="color"] { width: 52px; padding: 2px; }
 .barra-pista span { display: block; height: 100%; background: var(--primario); border-radius: 5px; }
 .barra-valor { font-weight: 600; }
 @media (max-width: 860px) { .saldo-linea .op { display: none; } }
+
+/* ---------- Lista con búsqueda ---------- */
+.combo { position: relative; }
+.combo input { padding-right: 2rem; cursor: pointer; }
+.combo.abierto input { cursor: text; }
+.combo-flecha { position: absolute; right: .7rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--tenue); font-size: .85rem; }
+.combo-lista {
+  position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: .25rem 0; list-style: none;
+  background: #fff; border: 1px solid #CDD2DA; border-radius: 6px; box-shadow: 0 10px 28px rgba(16,24,40,.16);
+  max-height: 300px; overflow-y: auto;
+}
+.combo-lista li { padding: .45rem .75rem; cursor: pointer; }
+.combo-lista li small { display: block; color: var(--tenue); font-size: .78rem; }
+.combo-lista li.activo { background: #EEF3F9; }
+.combo-lista li.elegido { font-weight: 700; color: var(--primario); }
+.combo-lista .combo-vacio { color: var(--tenue); cursor: default; }
+.sugerencias button.activo { background: #EEF3F9; box-shadow: inset 3px 0 0 var(--primario); }
+.ver-reporte { margin-top: .75rem; }
+
+/* ---------- Reporte del culto ---------- */
+.reporte { background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; padding: 1.5rem 1.75rem; border: 1px solid var(--linea); border-radius: 6px; margin-top: .75rem; }
+.rep-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.75rem; }
+.rep-logo { max-width: 260px; max-height: 110px; object-fit: contain; }
+.rep-nombre { font-size: 1.2rem; font-weight: 700; color: var(--primario); max-width: 300px; }
+.rep-fecha { display: grid; grid-template-columns: auto auto; gap: .1rem .6rem; margin: 2.5rem 0 0; align-items: baseline; }
+.rep-fecha dt { font-weight: 700; text-align: right; }
+.rep-fecha dd { margin: 0; font-weight: 700; font-size: 1.25rem; }
+.rep-tabla { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.rep-tabla td { border: 1px solid #C9CCD1; padding: .4rem .6rem; }
+.rep-tabla td:first-child { border-right: 2px solid #111; }
+.rep-tabla .num, .rep-total .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rep-medio { color: #444; }
+.rep-total { width: 100%; border-collapse: collapse; border: 2px solid #111; margin-bottom: .9rem; }
+.rep-total th { text-align: right; padding: .5rem .7rem; font-size: 1.05rem; border-right: 2px solid #111; width: 46%; }
+.rep-total td { padding: .5rem .7rem; }
+.rep-medios { display: flex; justify-content: space-around; gap: 1rem; font-size: .9rem; padding-bottom: 1rem; border-bottom: 2px solid #111; margin-bottom: 1rem; }
+.rep-dia { margin-left: auto; width: min(100%, 420px); }
+.rep-dia h3 { font-size: .85rem; text-transform: none; text-align: right; margin: 0 0 .3rem; }
+.rep-chica { font-size: .85rem; }
+.rep-chica th { font-size: .85rem; }
+.rep-firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 2.5rem; }
+.rep-firmas h3 { font-size: 1.15rem; text-decoration: underline; margin: 0 0 .5rem; }
+.rep-firmas > div:last-child { text-align: right; }
+.rep-firma { display: grid; gap: .2rem; margin-top: 2.6rem; }
+.rep-linea { display: block; border-top: 1px solid #111; }
+.rep-sin { color: #666; font-size: .85rem; }
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+  :root, body { background: #fff; }
+  body * { visibility: hidden; }
+  .reporte, .reporte * { visibility: visible; }
+  .modal-fondo { position: absolute; inset: 0; background: none; display: block; padding: 0; }
+  .modal { max-height: none; overflow: visible; box-shadow: none; padding: 0; max-width: none !important; }
+  .reporte { position: absolute; left: 0; top: 0; width: 100%; border: 0; padding: 0; margin: 0; }
+  .no-imprimir, .modal-cab { display: none; }
+}

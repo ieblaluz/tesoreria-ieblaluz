@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import Combobox from '../components/Combobox'
 
 const vacio = () => ({ fecha: hoy(), turno: 'Mañana', medio: 'Efectivo', hermano_id: '', grupo_id: '', monto: '', comentario: '' })
 
@@ -120,18 +121,13 @@ export default function Ingresos() {
               <select value={editando.turno} onChange={setE('turno')}><option>Mañana</option><option>Tarde</option></select>
             </Campo>
             <Campo etiqueta="Hermano" ancho="completo">
-              <select required value={editando.hermano_id} onChange={setE('hermano_id')}>
-                <option value="">Elige…</option>
-                {hermanos.filter((h) => h.activo || h.id === editando.hermano_id).map((h) =>
-                  <option key={h.id} value={h.id}>{h.nro_sobre} · {h.nombre} {h.apellidos}</option>)}
-              </select>
+              <Combobox required valor={editando.hermano_id} onCambio={(v) => setEditando((p) => ({ ...p, hermano_id: v }))}
+                opciones={hermanos.filter((h) => h.activo || h.id === editando.hermano_id)
+                  .map((h) => ({ id: h.id, etiqueta: `${h.nro_sobre} · ${h.nombre} ${h.apellidos || ''}`.trim() }))} />
             </Campo>
             <Campo etiqueta="Grupo" ancho="completo">
-              <select required value={editando.grupo_id} onChange={setE('grupo_id')}>
-                <option value="">Elige…</option>
-                {grupos.filter((g) => g.activo || g.id === editando.grupo_id).map((g) =>
-                  <option key={g.id} value={g.id}>{g.nombre}</option>)}
-              </select>
+              <Combobox required valor={editando.grupo_id} onCambio={(v) => setEditando((p) => ({ ...p, grupo_id: v }))}
+                opciones={grupos.filter((g) => g.activo || g.id === editando.grupo_id).map((g) => ({ id: g.id, etiqueta: g.nombre }))} />
             </Campo>
             <Campo etiqueta="Medio">
               <select value={editando.medio} onChange={setE('medio')}><option>Efectivo</option><option>Banco</option></select>

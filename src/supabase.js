@@ -12,7 +12,7 @@ let moneda = 'EUR'
 export const setMoneda = (m) => { moneda = m || 'EUR' }
 
 export const dinero = (n) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: moneda }).format(Number(n) || 0)
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: moneda, useGrouping: 'always' }).format(Number(n) || 0)
 
 // Fecha local en formato AAAA-MM-DD
 export const hoy = () => new Date().toLocaleDateString('sv-SE')

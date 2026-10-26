@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import Combobox from '../components/Combobox'
 
 const vacio = () => ({ fecha: hoy(), cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
   modalidad: 'Banco', monto: '', autorizador_id: '', comentario: '' })
@@ -100,6 +101,7 @@ export default function Gastos() {
   }
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const setV = (k) => (v) => setEditando((p) => (k === 'cuenta_id' ? { ...p, cuenta_id: v, subcuenta_id: '' } : { ...p, [k]: v }))
   const setE = (k) => (e) => {
     const v = e.target.value
     setEditando((p) => (k === 'cuenta_id' ? { ...p, cuenta_id: v, subcuenta_id: '' } : { ...p, [k]: v }))
@@ -154,17 +156,14 @@ export default function Gastos() {
             <Campo etiqueta="Fecha"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
             <Campo etiqueta="Factura"><input value={editando.factura} onChange={setE('factura')} /></Campo>
             <Campo etiqueta="Cuenta (ministerio)">
-              <select required value={editando.cuenta_id} onChange={setE('cuenta_id')}>
-                <option value="">Elige…</option>
-                {activos(cuentas, editando.cuenta_id).map((c) => <option key={c.id} value={c.id}>{c.nro} · {c.ministerio}</option>)}
-              </select>
+              <Combobox required valor={editando.cuenta_id} onCambio={setV('cuenta_id')}
+                opciones={activos(cuentas, editando.cuenta_id).map((c) => ({ id: c.id, etiqueta: `${c.nro} · ${c.ministerio}` }))} />
             </Campo>
             <Campo etiqueta="Subcuenta">
-              <select required value={editando.subcuenta_id} onChange={setE('subcuenta_id')} disabled={!editando.cuenta_id}>
-                <option value="">{editando.cuenta_id ? 'Elige…' : 'Primero la cuenta'}</option>
-                {activos(subcuentas, editando.subcuenta_id).filter((s) => s.cuenta_id === editando.cuenta_id)
-                  .map((s) => <option key={s.id} value={s.id}>{s.nro} · {s.nombre}</option>)}
-              </select>
+              <Combobox required valor={editando.subcuenta_id} onCambio={setV('subcuenta_id')} disabled={!editando.cuenta_id}
+                placeholder={editando.cuenta_id ? 'Escribe para buscar…' : 'Primero la cuenta'}
+                opciones={activos(subcuentas, editando.subcuenta_id).filter((s) => s.cuenta_id === editando.cuenta_id)
+                  .map((s) => ({ id: s.id, etiqueta: `${s.nro} · ${s.nombre}` }))} />
             </Campo>
             {pres && (
               <div className={'presupuesto-info campo-completo' + (disponible !== null && disponible < 0 ? ' excedido' : '')}>
@@ -175,16 +174,12 @@ export default function Gastos() {
             )}
             <Campo etiqueta="Concepto" ancho="completo"><input required value={editando.concepto} onChange={setE('concepto')} /></Campo>
             <Campo etiqueta="Proveedor (opcional)">
-              <select value={editando.proveedor_id} onChange={setE('proveedor_id')}>
-                <option value="">Sin proveedor</option>
-                {activos(proveedores, editando.proveedor_id).map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select>
+              <Combobox permitirVacio etiquetaVacio="Sin proveedor" valor={editando.proveedor_id} onCambio={setV('proveedor_id')}
+                opciones={activos(proveedores, editando.proveedor_id).map((p) => ({ id: p.id, etiqueta: p.nombre, detalle: p.cif_nie }))} />
             </Campo>
             <Campo etiqueta="Autoriza">
-              <select required value={editando.autorizador_id} onChange={setE('autorizador_id')}>
-                <option value="">Elige…</option>
-                {activos(autorizadores, editando.autorizador_id).map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-              </select>
+              <Combobox required valor={editando.autorizador_id} onCambio={setV('autorizador_id')}
+                opciones={activos(autorizadores, editando.autorizador_id).map((a) => ({ id: a.id, etiqueta: a.nombre }))} />
             </Campo>
             <Campo etiqueta="Modalidad">
               <select value={editando.modalidad} onChange={setE('modalidad')}><option>Banco</option><option>Efectivo</option></select>

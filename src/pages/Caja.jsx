@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, dinero, hoy, aNumero, mensajeError } from '../supabase'
 import { Aviso } from '../components/ui'
+import Combobox from '../components/Combobox'
+import ReporteCulto from '../components/ReporteCulto'
 
 const nombreH = (h) => `${h.nombre} ${h.apellidos || ''}`.trim()
 
-export default function Caja({ perfil }) {
+export default function Caja({ perfil, config }) {
+  const [activo, setActivo] = useState(0)
+  const [reporte, setReporte] = useState(false)
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
   const [fecha, setFecha] = useState(hoy())
@@ -43,24 +47,30 @@ export default function Caja({ perfil }) {
   const sugerencias = useMemo(() => {
     const t = busca.trim().toLowerCase()
     if (!t || hermano) return []
-    if (/^\d+$/.test(t)) return hermanos.filter((h) => String(h.nro_sobre).startsWith(t)).slice(0, 6)
-    return hermanos.filter((h) => nombreH(h).toLowerCase().includes(t)).slice(0, 6)
+    if (/^\d+$/.test(t)) {
+      const exacto = hermanos.filter((h) => String(h.nro_sobre) === t)
+      return [...exacto, ...hermanos.filter((h) => String(h.nro_sobre) !== t && String(h.nro_sobre).startsWith(t))].slice(0, 8)
+    }
+    const n = (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    return hermanos.filter((h) => n(nombreH(h)).includes(n(t))).slice(0, 8)
   }, [busca, hermano, hermanos])
 
   function escribirBusca(v) {
-    setBusca(v)
-    const t = v.trim()
-    setHermano(/^\d+$/.test(t) ? hermanos.find((h) => String(h.nro_sobre) === t) || null : null)
+    setBusca(v); setHermano(null); setActivo(0)
   }
   function elegir(h) {
     setHermano(h); setBusca(String(h.nro_sobre))
     setTimeout(() => refMonto.current?.focus(), 0)
   }
   function teclaBusca(e) {
-    if (e.key !== 'Enter') return
-    e.preventDefault()
-    if (hermano) refMonto.current?.focus()
-    else if (sugerencias.length === 1) elegir(sugerencias[0])
+    if (e.key === 'ArrowDown' && sugerencias.length) { e.preventDefault(); setActivo((a) => Math.min(a + 1, sugerencias.length - 1)) }
+    else if (e.key === 'ArrowUp' && sugerencias.length) { e.preventDefault(); setActivo((a) => Math.max(a - 1, 0)) }
+    else if (e.key === 'Escape') { setBusca(''); setHermano(null) }
+    else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (hermano) refMonto.current?.focus()
+      else if (sugerencias[activo]) elegir(sugerencias[activo])
+    }
   }
 
   async function guardar(e) {
@@ -115,9 +125,8 @@ export default function Caja({ perfil }) {
         </div>
         <label className="campo">
           <span className="campo-etiqueta">Grupo</span>
-          <select value={grupoId} onChange={(e) => setGrupoId(e.target.value)}>
-            {grupos.map((g) => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-          </select>
+          <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
+            onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)} />
         </label>
       </div>
 
@@ -134,13 +143,14 @@ export default function Caja({ perfil }) {
               ? <strong>{hermano.nro_sobre} · {nombreH(hermano)}</strong>
               : sugerencias.length > 0
                 ? <ul className="sugerencias">
-                    {sugerencias.map((h) => (
-                      <li key={h.id}><button type="button" onClick={() => elegir(h)}>
+                    {sugerencias.map((h, i) => (
+                      <li key={h.id}><button type="button" tabIndex={-1} className={i === activo ? 'activo' : ''}
+                        onMouseDown={(e) => e.preventDefault()} onClick={() => elegir(h)} onMouseEnter={() => setActivo(i)}>
                         <b>{h.nro_sobre}</b> {nombreH(h)}
                       </button></li>
                     ))}
                   </ul>
-                : <span className="tenue">{busca ? 'Sin coincidencias' : 'Escribe el número del sobre'}</span>}
+                : <span className="tenue">{busca ? 'Sin coincidencias' : 'Escribe el número del sobre o el nombre; usa ↑ ↓ y Enter'}</span>}
           </div>
           <label className="campo">
             <span className="campo-etiqueta">Monto</span>
@@ -189,6 +199,8 @@ export default function Caja({ perfil }) {
               </li>
             ))}
           </ol>
+          <button className="btn btn-suave btn-ancho ver-reporte" onClick={() => setReporte(true)}>Ver e imprimir reporte del culto</button>
+          {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} />}
           {perfil.rol !== 'tesorero' && !perfil.ver_historial && (
             <p className="tenue nota">Ves solo los ingresos que has registrado tú.</p>
           )}
