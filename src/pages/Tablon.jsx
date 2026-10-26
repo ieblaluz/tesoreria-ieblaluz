@@ -5,7 +5,7 @@ import Combobox from '../components/Combobox'
 import ReporteCulto from '../components/ReporteCulto'
 
 // Sección "Tablón semanal" del módulo de reportes
-export default function Tablon({ esTesorero, config }) {
+export default function Tablon({ config }) {
   const [contadores, setContadores] = useState([])
   const [registros, setRegistros] = useState([])
   const [form, setForm] = useState({ fecha: hoy(), turno: new Date().getHours() < 15 ? 'Mañana' : 'Tarde', contador_id: '' })
@@ -48,13 +48,6 @@ export default function Tablon({ esTesorero, config }) {
     cargar()
   }
 
-  async function quitar(p) {
-    if (!confirm(`¿Quitar a ${p.nombre} de este culto?`)) return
-    const { error } = await supabase.from('tablon_semanal').delete().eq('id', p.id)
-    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
-    cargar()
-  }
-
   return (
     <div>
       <form className="panel fila-campos" onSubmit={registrar}>
@@ -93,10 +86,6 @@ export default function Tablon({ esTesorero, config }) {
                     {c.personas.map((p) => (
                       <span key={p.id} className="chip">
                         {p.nombre}
-                        {esTesorero && (
-                          <button type="button" aria-label={`Quitar a ${p.nombre}`}
-                            onClick={(e) => { e.stopPropagation(); quitar(p) }}>✕</button>
-                        )}
                       </span>
                     ))}
                   </span>
