@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, setMoneda } from './supabase'
 import { Cargando } from './components/ui'
+import Icono from './components/Iconos'
 import Login from './pages/Login'
+import Inicio from './pages/Inicio'
 import Caja from './pages/Caja'
 import Resumen from './pages/Resumen'
 import Ingresos from './pages/Ingresos'
@@ -15,27 +17,38 @@ import Reportes from './pages/Reportes'
 import Movimientos from './pages/Movimientos'
 
 const TODOS = ['tesorero', 'contador']
+const T = ['tesorero']
+// barra: aparece en la barra superior · admin: en el menú de usuario · movil: pestaña inferior en el móvil
 const MENU = [
-  { id: 'resumen', label: 'Resumen', roles: ['tesorero'], C: Resumen },
-  { id: 'caja', label: 'Registrar ingresos', roles: TODOS, C: Caja },
-  { id: 'ingresos', label: 'Ingresos', roles: ['tesorero'], C: Ingresos },
-  { id: 'gastos', label: 'Gastos', roles: ['tesorero'], C: Gastos },
-  { id: 'movimientos', label: 'Caja y banco', roles: ['tesorero'], C: Movimientos },
-  { id: 'presupuesto', label: 'Presupuesto', roles: ['tesorero'], C: Presupuesto },
-  { id: 'reportes', label: 'Reportes', roles: TODOS, C: Reportes },
-  { id: 'catalogos', label: 'Catálogos', roles: ['tesorero'], C: Catalogos, separador: true },
-  { id: 'usuarios', label: 'Usuarios', roles: ['tesorero'], C: Usuarios },
-  { id: 'configuracion', label: 'Configuración', roles: ['tesorero'], C: Configuracion },
-  { id: 'perfil', label: 'Mi perfil', roles: TODOS, C: Perfil, separador: true },
+  { id: 'inicio', label: 'Inicio', icono: 'inicio', roles: TODOS, C: Inicio, barra: true, movil: true },
+  { id: 'resumen', label: 'Resumen', icono: 'resumen', roles: T, C: Resumen, barra: true, grupo: 'Control', desc: 'Saldos del periodo e ingresos y gastos de un vistazo' },
+  { id: 'caja', label: 'Registrar ingresos', corto: 'Registrar', icono: 'caja', roles: TODOS, C: Caja, barra: true, movil: true, grupo: 'Operaciones', desc: 'Caja del culto: sobres, montos y contadores' },
+  { id: 'ingresos', label: 'Ingresos', icono: 'ingresos', roles: T, C: Ingresos, barra: true, movil: true, grupo: 'Operaciones', desc: 'Registros y análisis de los ingresos' },
+  { id: 'gastos', label: 'Gastos', icono: 'gastos', roles: T, C: Gastos, barra: true, movil: true, grupo: 'Operaciones', desc: 'Registros y análisis de los gastos' },
+  { id: 'movimientos', label: 'Caja y banco', icono: 'movimientos', roles: T, C: Movimientos, barra: true, grupo: 'Operaciones', desc: 'Depósitos y reintegros entre efectivo y banco' },
+  { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', roles: T, C: Presupuesto, barra: true, grupo: 'Control', desc: 'Presupuestado frente a ejecutado por subcuenta' },
+  { id: 'reportes', label: 'Reportes', icono: 'reportes', roles: TODOS, C: Reportes, barra: true, grupo: 'Control', desc: 'Tablón, recibos, informes y exportación a Excel' },
+  { id: 'catalogos', label: 'Catálogos', icono: 'catalogos', roles: T, C: Catalogos, barra: true, grupo: 'Administración', desc: 'Hermanos, proveedores, cuentas y más' },
+  { id: 'usuarios', label: 'Usuarios', icono: 'usuarios', roles: T, C: Usuarios, admin: true, grupo: 'Administración', desc: 'Accesos, roles y claves' },
+  { id: 'configuracion', label: 'Configuración', icono: 'configuracion', roles: T, C: Configuracion, admin: true, grupo: 'Administración', desc: 'Logos, colores, firmas y opciones' },
+  { id: 'perfil', label: 'Mi perfil', icono: 'perfil', roles: TODOS, C: Perfil, admin: true, grupo: 'Mi cuenta', desc: 'Tus datos y cambio de clave' },
 ]
+
+// La ruta vive en el #: "#reportes/recibos" → pagina "reportes", sub "recibos"
+const leerRuta = () => {
+  const [pagina = 'inicio', sub = null] = decodeURIComponent(window.location.hash.slice(1)).split('/')
+  return { pagina: pagina || 'inicio', sub }
+}
 
 export default function App() {
   const [sesion, setSesion] = useState(undefined)
   const [perfil, setPerfil] = useState(null)
   const [config, setConfig] = useState(null)
-  const [pagina, setPagina] = useState(null)
-  const [menuAbierto, setMenuAbierto] = useState(false)
+  const [ruta, setRuta] = useState(leerRuta)
+  const [masAbierto, setMasAbierto] = useState(false)
+  const [usuarioAbierto, setUsuarioAbierto] = useState(false)
   const [avisoLogin, setAvisoLogin] = useState('')
+  const refUsuario = useRef(null)
 
   const cargarConfig = useCallback(async () => {
     const { data } = await supabase.from('configuracion').select('*').eq('id', 1).maybeSingle()
@@ -56,9 +69,23 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [cargarConfig])
 
+  // Botón "atrás" del navegador o del móvil: vuelve a la pantalla anterior
+  useEffect(() => {
+    const alVolver = () => { setRuta(leerRuta()); setMasAbierto(false); setUsuarioAbierto(false) }
+    window.addEventListener('popstate', alVolver)
+    return () => window.removeEventListener('popstate', alVolver)
+  }, [])
+
+  useEffect(() => {
+    if (!usuarioAbierto) return
+    const fuera = (e) => { if (!refUsuario.current?.contains(e.target)) setUsuarioAbierto(false) }
+    document.addEventListener('mousedown', fuera)
+    return () => document.removeEventListener('mousedown', fuera)
+  }, [usuarioAbierto])
+
   const uid = sesion?.user?.id
   useEffect(() => {
-    if (!uid) { setPerfil(null); setPagina(null); return }
+    if (!uid) { setPerfil(null); return }
     supabase.from('perfiles').select('*').eq('id', uid).maybeSingle().then(({ data }) => {
       if (!data || !data.activo) {
         setAvisoLogin('Tu usuario está desactivado. Habla con el tesorero.')
@@ -66,56 +93,100 @@ export default function App() {
         return
       }
       setPerfil(data)
-      setPagina((p) => p || (data.rol === 'tesorero' ? 'resumen' : 'caja'))
     })
   }, [uid])
+
+  const ir = useCallback((pagina, sub = null) => {
+    const destino = '#' + pagina + (sub ? '/' + sub : '')
+    setMasAbierto(false); setUsuarioAbierto(false)
+    if (window.history.state?.hoja) window.history.replaceState(null, '', destino)
+    else if (window.location.hash !== destino) window.history.pushState(null, '', destino)
+    setRuta({ pagina, sub })
+    window.scrollTo(0, 0)
+  }, [])
 
   if (sesion === undefined) return <Cargando />
   if (!sesion) return <Login config={config} aviso={avisoLogin} limpiarAviso={() => setAvisoLogin('')} />
   if (!perfil) return <Cargando />
 
+  const esTesorero = perfil.rol === 'tesorero'
   const menu = MENU.filter((m) => m.roles.includes(perfil.rol))
-  const actual = menu.find((m) => m.id === pagina) || menu[0]
+  const actual = menu.find((m) => m.id === ruta.pagina) || menu[0]
   const Pagina = actual.C
-  const ir = (id) => { setPagina(id); setMenuAbierto(false); window.scrollTo(0, 0) }
+  const enBarra = menu.filter((m) => m.barra)
+  const enAdmin = menu.filter((m) => m.admin)
+  const pestanas = menu.filter((m) => m.movil)
+  // La hoja "Más" también se cierra con el botón atrás del móvil
+  const abrirHoja = () => { window.history.pushState({ hoja: true }, '', window.location.href); setMasAbierto(true) }
+  const cerrarHoja = () => { if (window.history.state?.hoja) window.history.back(); else setMasAbierto(false) }
+  const salir = () => { window.history.replaceState(null, '', '#inicio'); supabase.auth.signOut() }
+  const logo = config?.icono_192_url || '/icon-192.png'
 
   return (
     <div className="marco">
-      <header className="barra-movil">
-        <button className="btn-icono claro" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">☰</button>
-        <span>{actual.label}</span>
-      </header>
-
-      <aside className={'lateral' + (menuAbierto ? ' abierto' : '')}>
-        <div className="marca">
-          <img src={config?.icono_192_url || '/icon-192.png'} alt="" />
-          <div>
-            <strong>{config?.nombre_app || 'Tesorería'}</strong>
-            <small>{config?.nombre_iglesia}</small>
-          </div>
-        </div>
-        <nav>
-          {menu.map((m) => (
-            <div key={m.id}>
-              {m.separador && <hr />}
-              <button className={'nav-item' + (m.id === actual.id ? ' activo' : '')} onClick={() => ir(m.id)}>
-                {m.label}
-              </button>
-            </div>
+      <header className="barra-superior">
+        <button className="marca" onClick={() => ir('inicio')} aria-label="Ir al inicio">
+          <img src={logo} alt="" />
+          <span><strong>{config?.nombre_app || 'Tesorería'}</strong><small>{config?.nombre_iglesia}</small></span>
+        </button>
+        <nav className="nav-superior" aria-label="Módulos">
+          {enBarra.map((m) => (
+            <button key={m.id} className={'nav-item' + (m.id === actual.id ? ' activo' : '')} onClick={() => ir(m.id)} title={m.label}>
+              <Icono nombre={m.icono} tam={19} /><span>{m.corto || m.label}</span>
+            </button>
           ))}
         </nav>
-        <div className="usuario-actual">
-          <span>{perfil.nombre}</span>
-          <small>{perfil.rol === 'tesorero' ? 'Tesorero' : 'Contador'}</small>
-          <button className="btn-texto claro" onClick={() => supabase.auth.signOut()}>Cerrar sesión</button>
+        <div className="usuario-menu" ref={refUsuario}>
+          <button className={'usuario-boton' + (enAdmin.some((m) => m.id === actual.id) ? ' activo' : '')} onClick={() => setUsuarioAbierto(!usuarioAbierto)} aria-expanded={usuarioAbierto}>
+            <span className="avatar">{(perfil.nombre || '?').charAt(0).toUpperCase()}</span>
+            <span className="usuario-nombre">{perfil.nombre}<small>{esTesorero ? 'Tesorero' : 'Contador'}</small></span>
+          </button>
+          {usuarioAbierto && (
+            <div className="usuario-panel">
+              {enAdmin.map((m) => (
+                <button key={m.id} onClick={() => ir(m.id)}><Icono nombre={m.icono} tam={18} />{m.label}</button>
+              ))}
+              <hr />
+              <button onClick={salir}><Icono nombre="salir" tam={18} />Cerrar sesión</button>
+            </div>
+          )}
         </div>
-      </aside>
-      {menuAbierto && <div className="velo" onClick={() => setMenuAbierto(false)} />}
+        <span className="titulo-movil">{actual.id === 'inicio' ? (config?.nombre_app || 'Tesorería') : actual.label}</span>
+      </header>
 
       <main className="contenido">
-        <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir}
-          esTesorero={perfil.rol === 'tesorero'} />
+        <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir} sub={ruta.sub}
+          menu={menu} esTesorero={esTesorero} />
       </main>
+
+      <nav className="barra-inferior" aria-label="Navegación">
+        {pestanas.map((m) => (
+          <button key={m.id} className={m.id === actual.id ? 'activo' : ''} onClick={() => ir(m.id)}>
+            <Icono nombre={m.icono} tam={23} /><span>{m.corto || m.label}</span>
+          </button>
+        ))}
+        <button className={masAbierto ? 'activo' : ''} onClick={() => (masAbierto ? cerrarHoja() : abrirHoja())}>
+          <Icono nombre="mas" tam={23} /><span>Más</span>
+        </button>
+      </nav>
+
+      {masAbierto && (
+        <div className="hoja-fondo" onClick={cerrarHoja}>
+          <div className="hoja" onClick={(e) => e.stopPropagation()}>
+            <div className="hoja-asa" />
+            <div className="hoja-usuario"><span className="avatar">{(perfil.nombre || '?').charAt(0).toUpperCase()}</span>
+              <span>{perfil.nombre}<small>{esTesorero ? 'Tesorero' : 'Contador'}</small></span></div>
+            <div className="hoja-rejilla">
+              {menu.filter((m) => !m.movil).map((m) => (
+                <button key={m.id} className={m.id === actual.id ? 'activo' : ''} onClick={() => ir(m.id)}>
+                  <Icono nombre={m.icono} tam={24} /><span>{m.corto || m.label}</span>
+                </button>
+              ))}
+              <button onClick={salir}><Icono nombre="salir" tam={24} /><span>Salir</span></button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
