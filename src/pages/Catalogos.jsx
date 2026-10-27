@@ -13,7 +13,7 @@ const CATALOGOS = [
     ],
     columnas: ['nro_sobre', 'nombre', 'apellidos', 'dni_nie', 'telefono'] },
   { id: 'proveedores', titulo: 'Proveedores', singular: 'proveedor', orden: 'nombre',
-    campos: [{ k: 'nombre', l: 'Proveedor', req: true }, { k: 'cif_nie', l: 'CIF/NIE' }, { k: 'direccion', l: 'Dirección', ancho: 'completo' }],
+    campos: [{ k: 'nombre', l: 'Proveedor', req: true, ancho: 'completo' }, { k: 'cif_nie', l: 'CIF/NIE', ancho: 'completo' }, { k: 'direccion', l: 'Dirección', ancho: 'completo' }],
     columnas: ['nombre', 'cif_nie', 'direccion'] },
   { id: 'cuentas', titulo: 'Cuentas', singular: 'cuenta', orden: 'nro',
     numero: { campo: 'nro', rpc: 'siguiente_nro_cuenta', nombre: 'número de cuenta' },
@@ -29,7 +29,7 @@ const CATALOGOS = [
   { id: 'grupos_ingreso', titulo: 'Grupos de ingreso', singular: 'grupo', orden: 'nombre',
     campos: [{ k: 'nombre', l: 'Nombre del grupo', req: true, ancho: 'completo' }], columnas: ['nombre'] },
   { id: 'autorizadores', titulo: 'Autorizadores', singular: 'autorizador', orden: 'nombre',
-    campos: [{ k: 'nombre', l: 'Nombre', req: true }, { k: 'cargo', l: 'Cargo' }], columnas: ['nombre', 'cargo'] },
+    campos: [{ k: 'nombre', l: 'Nombre', req: true, ancho: 'completo' }, { k: 'cargo', l: 'Cargo', ancho: 'completo' }], columnas: ['nombre', 'cargo'] },
   { id: 'contadores', titulo: 'Contadores', singular: 'contador', orden: 'nombre',
     campos: [{ k: 'nombre', l: 'Nombre', req: true, ancho: 'completo' }], columnas: ['nombre'] },
 ]

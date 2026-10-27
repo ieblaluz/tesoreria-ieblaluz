@@ -82,8 +82,8 @@ export function InformeIngresosEgresos({ config }) {
       return [...m.entries()].sort((a, b) => b[1] - a[1])
     }
     const tabla = (subtitulo, cabecera, pares, textoTotal) => ({
-      subtitulo, vacio: 'Sin movimientos.',
-      columnas: [{ t: cabecera, ancho: 44 }, { t: 'Importe', tipo: 'dinero' }],
+      subtitulo, vacio: 'Sin movimientos.', lado: true,
+      columnas: [{ t: cabecera, ancho: 30 }, { t: 'Importe', tipo: 'dinero' }],
       filas: [...pares.map(([k, v]) => ({ celdas: [k, r2(v)] })), { celdas: [textoTotal, r2(suma(pares.map((p) => p[1])))], tipo: 'subtotal' }],
     })
     const totalFila = (texto, v) => ({ sinCabecera: true, columnas: [{ t: '', ancho: 44 }, { t: '', tipo: 'dinero' }], filas: [{ celdas: [texto, r2(v)], tipo: 'total' }] })
@@ -106,7 +106,7 @@ export function InformeIngresosEgresos({ config }) {
         tabla('Gastos en banco', 'Subcuenta', gb, 'Total gastos en banco'),
         totalFila('Total gastos (efectivo + banco)', tGas),
         {
-          subtitulo: 'Resumen', sinCabecera: true, columnas: [{ t: '', ancho: 44 }, { t: '', tipo: 'dinero' }],
+          subtitulo: 'Resumen', sinCabecera: true, estrecha: true, columnas: [{ t: '', ancho: 44 }, { t: '', tipo: 'dinero' }],
           filas: [
             { celdas: ['Saldo al inicio del periodo', r2(inicial)] },
             { celdas: ['Total ingresos', r2(tIng)] },
