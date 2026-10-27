@@ -96,15 +96,29 @@ export function VistaDocumento({ titulo, archivo, onCerrar, listo, horizontal, o
 
 // Dibuja las tablas de un modelo de reporte (el mismo que se exporta a Excel)
 export function TablasModelo({ modelo }) {
-  return modelo.tablas.map((t, k) => (
-    <section key={k} className={'doc-seccion' + (modelo.compacto ? ' doc-compacto' : '') + (t.estrecha ? ' doc-estrecha' : '')}>
+  // Tablas marcadas con "lado" consecutivas se muestran en dos columnas (ahorra papel)
+  const bloques = []
+  modelo.tablas.forEach((t, k) => {
+    const ultimo = bloques[bloques.length - 1]
+    if (t.lado && ultimo?.lado && ultimo.items.length < 2) ultimo.items.push([t, k])
+    else bloques.push({ lado: !!t.lado, items: [[t, k]] })
+  })
+  return bloques.map((b, i) => (b.lado
+    ? <div key={i} className="doc-lado">{b.items.map(([t, k]) => <TablaModelo key={k} t={t} k={k} modelo={modelo} />)}</div>
+    : <TablaModelo key={i} t={b.items[0][0]} k={b.items[0][1]} modelo={modelo} />))
+}
+
+function TablaModelo({ t, k, modelo }) {
+  return (
+    <section key={k} className={'doc-seccion doc-modelo' + (modelo.compacto ? ' doc-compacto' : '') + (t.estrecha ? ' doc-estrecha' : '')}>
       {t.subtitulo && <h2 className="doc-subtitulo">{t.subtitulo}</h2>}
       {modelo.compacto && k === 0 && <p className="doc-unidad">Importes en euros</p>}
       <table className="doc-tabla">
         {!t.sinCabecera && (
           <thead><tr>{t.columnas.map((c, i) => {
             const num = c.tipo === 'dinero' || c.tipo === 'entero'
-            return <th key={i} className={num ? 'num' : ''} style={!num && c.ancho ? { minWidth: `${Math.round(c.ancho * (modelo.compacto ? 4.5 : 6))}px` } : undefined}>{c.t}</th>
+            return <th key={i} className={num ? 'num' : ''} style={!num && c.ancho ? { minWidth: `${Math.round(c.ancho * (modelo.compacto ? 4.5 : 6))}px` } : undefined}>
+              {String(c.t).split('\n').map((l, j) => <span key={j} className="th-linea">{l}</span>)}</th>
           })}</tr></thead>
         )}
         <tbody>
@@ -128,5 +142,5 @@ export function TablasModelo({ modelo }) {
         </tbody>
       </table>
     </section>
-  ))
+  )
 }
