@@ -50,6 +50,8 @@ export default function App() {
   const [rol, setRol] = useState(null)
   const [permisos, setPermisos] = useState([])
   const refUsuario = useRef(null)
+  const hayUsuario = useRef(false)
+  const irAInicio = () => { window.history.replaceState(null, '', '#inicio'); setRuta({ pagina: 'inicio', sub: null }) }
 
   const cargarConfig = useCallback(async () => {
     const { data } = await supabase.from('configuracion').select('*').eq('id', 1).maybeSingle()
@@ -65,8 +67,13 @@ export default function App() {
 
   useEffect(() => {
     cargarConfig()
-    supabase.auth.getSession().then(({ data }) => setSesion(data.session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSesion(s))
+    supabase.auth.getSession().then(({ data }) => { hayUsuario.current = !!data.session; setSesion(data.session) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, s) => {
+      // Al iniciar sesión (no al recargar la página) siempre se empieza en Inicio
+      if (evento === 'SIGNED_IN' && !hayUsuario.current) irAInicio()
+      hayUsuario.current = !!s
+      setSesion(s)
+    })
     return () => subscription.unsubscribe()
   }, [cargarConfig])
 
@@ -126,7 +133,7 @@ export default function App() {
   // La hoja "Más" también se cierra con el botón atrás del móvil
   const abrirHoja = () => { window.history.pushState({ hoja: true }, '', window.location.href); setMasAbierto(true) }
   const cerrarHoja = () => { if (window.history.state?.hoja) window.history.back(); else setMasAbierto(false) }
-  const salir = () => { window.history.replaceState(null, '', '#inicio'); supabase.auth.signOut() }
+  const salir = () => { irAInicio(); setMasAbierto(false); setUsuarioAbierto(false); supabase.auth.signOut() }
   const logo = config?.icono_192_url || '/icon-192.png'
 
   return (
