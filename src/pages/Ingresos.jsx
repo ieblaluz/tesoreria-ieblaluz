@@ -6,7 +6,8 @@ import { AnalisisIngresos } from '../components/Analisis'
 
 const vacio = () => ({ fecha: hoy(), turno: 'Mañana', medio: 'Efectivo', hermano_id: '', grupo_id: '', monto: '', comentario: '' })
 
-export default function Ingresos({ config }) {
+export default function Ingresos({ config, puede }) {
+  const editable = puede('ingresos_editar')
   const [vista, setVista] = useState('registros')
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
@@ -75,7 +76,7 @@ export default function Ingresos({ config }) {
     <section className="pagina con-tabla">
       <div className="titulo-accion">
         <h1>Ingresos</h1>
-        <button className="btn btn-primario" onClick={() => setEditando(vacio())}>Nuevo ingreso</button>
+        {editable && <button className="btn btn-primario" onClick={() => setEditando(vacio())}>Nuevo ingreso</button>}
       </div>
       <div className="pestanas" role="tablist">
         <button role="tab" aria-selected={vista === 'registros'} className={vista === 'registros' ? 'sel' : ''} onClick={() => setVista('registros')}>Registros</button>
@@ -108,7 +109,7 @@ export default function Ingresos({ config }) {
             <thead><tr><th>Fecha</th><th>Turno</th><th>Sobre</th><th>Hermano</th><th>Grupo</th><th>Medio</th><th className="num">Monto</th></tr></thead>
             <tbody>
               {visibles.map((x) => (
-                <tr key={x.id} className="clic" onClick={() => setEditando({ ...x, monto: String(x.monto).replace('.', ',') })}>
+                <tr key={x.id} className={editable ? 'clic' : ''} onClick={editable ? () => setEditando({ ...x, monto: String(x.monto).replace('.', ',') }) : undefined}>
                   <td>{fmtFecha(x.fecha)}</td><td>{x.turno}</td><td>{x.nro_sobre}</td>
                   <td>{x.hermano_nombre} {x.hermano_apellidos}</td><td>{x.grupo}</td><td>{x.medio}</td>
                   <td className="num">{dinero(x.monto)}</td>

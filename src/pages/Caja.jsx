@@ -7,7 +7,7 @@ import ReporteCulto from '../components/ReporteCulto'
 const nombreContador = (c) => c.contadores?.nombre || c.nombre_libre || ''
 const nombreH = (h) => `${h.nombre} ${h.apellidos || ''}`.trim()
 
-export default function Caja({ perfil, config, esTesorero }) {
+export default function Caja({ perfil, config, esTesorero, puede }) {
   const [contadores, setContadores] = useState([])
   const [contadorId, setContadorId] = useState(perfil.contador_id || '')
   const [contaron, setContaron] = useState([])
@@ -252,7 +252,7 @@ export default function Caja({ perfil, config, esTesorero }) {
           </ol>
           <button className="btn btn-suave btn-ancho ver-reporte" onClick={() => setReporte(true)}>Ver e imprimir reporte del culto</button>
           {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} />}
-          {perfil.rol !== 'tesorero' && !perfil.ver_historial && (
+          {!puede('ingresos') && !perfil.ver_historial && (
             <p className="tenue nota">Ves solo los ingresos que has registrado tú.</p>
           )}
         </div>

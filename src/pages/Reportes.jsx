@@ -3,28 +3,27 @@ import Recibos from './Recibos'
 import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, PresupuestoAnual } from './ReportesFinancieros'
 
 // Catálogo de reportes. Para añadir uno nuevo basta con sumarlo a esta lista.
-const TODOS = ['tesorero', 'contador']
 const SECCIONES = [
-  { id: 'tablon', titulo: 'Tablón semanal', icono: '▤', roles: TODOS, C: Tablon,
+  { id: 'tablon', titulo: 'Tablón semanal', icono: '▤', permiso: 'reportes_tablon', C: Tablon,
     descripcion: 'Quién contó en cada culto y el reporte de ingresos del culto para firmar.' },
-  { id: 'recibos', titulo: 'Recibo individual de contribuciones', icono: '❏', roles: ['tesorero'], C: Recibos,
+  { id: 'recibos', titulo: 'Recibo individual de contribuciones', icono: '❏', permiso: 'reportes', C: Recibos,
     descripcion: 'Aportaciones de cada hermano en un periodo, con su total y la firma del tesorero.' },
-  { id: 'ingresos-egresos', titulo: 'Informe de ingresos y egresos', icono: '⇅', roles: ['tesorero'], C: InformeIngresosEgresos,
+  { id: 'ingresos-egresos', titulo: 'Informe de ingresos y egresos', icono: '⇅', permiso: 'reportes', C: InformeIngresosEgresos,
     descripcion: 'Ingresos por grupo y gastos por subcuenta de un periodo, separados por efectivo y banco, con saldos.' },
-  { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', roles: ['tesorero'], C: IngresosMensuales,
+  { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', permiso: 'reportes', C: IngresosMensuales,
     descripcion: 'Aportaciones de un mes por número de sobre y domingo, sin nombres, para publicar.' },
-  { id: 'anuales', titulo: 'Ingresos anuales', icono: '▥', roles: ['tesorero'], C: IngresosAnuales,
+  { id: 'anuales', titulo: 'Ingresos anuales', icono: '▥', permiso: 'reportes', C: IngresosAnuales,
     descripcion: 'Aportaciones de cada hermano mes a mes durante un año.' },
-  { id: 'tres-anios', titulo: 'Ingresos de los últimos 3 años', icono: '▧', roles: ['tesorero'], C: IngresosTresAnios,
+  { id: 'tres-anios', titulo: 'Ingresos de los últimos 3 años', icono: '▧', permiso: 'reportes', C: IngresosTresAnios,
     descripcion: 'Total aportado por cada hermano en cada uno de los tres últimos años, con DNI/NIE.' },
-  { id: 'proveedores', titulo: 'Proveedores trimestral', icono: '▨', roles: ['tesorero'], C: ProveedoresTrimestral,
+  { id: 'proveedores', titulo: 'Proveedores trimestral', icono: '▨', permiso: 'reportes', C: ProveedoresTrimestral,
     descripcion: 'Gastos por proveedor en cada trimestre del año.' },
-  { id: 'presupuesto', titulo: 'Presupuesto anual', icono: '◫', roles: ['tesorero'], C: PresupuestoAnual,
+  { id: 'presupuesto', titulo: 'Presupuesto anual', icono: '◫', permiso: 'reportes', C: PresupuestoAnual,
     descripcion: 'Gastos de cada subcuenta por mes frente a lo presupuestado, con su saldo.' },
 ]
 
 export default function Reportes(props) {
-  const disponibles = SECCIONES.filter((s) => s.roles.includes(props.perfil.rol))
+  const disponibles = SECCIONES.filter((s) => props.puede(s.permiso))
   // La sección elegida forma parte de la ruta (#reportes/recibos), así "atrás" vuelve al listado
   const actual = props.sub || (disponibles.length === 1 ? disponibles[0].id : null)
   const setActual = (id) => props.ir('reportes', id)

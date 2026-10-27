@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import RolesPermisos from '../components/RolesPermisos'
 
 async function api(cuerpo) {
   const { data: { session } } = await supabase.auth.getSession()
@@ -15,6 +16,8 @@ async function api(cuerpo) {
 }
 
 export default function Usuarios({ perfil }) {
+  const [vista, setVista] = useState('usuarios')
+  const [roles, setRoles] = useState([])
   const [lista, setLista] = useState(null)
   const [nuevo, setNuevo] = useState(null)
   const [clave, setClave] = useState(null)
@@ -28,7 +31,11 @@ export default function Usuarios({ perfil }) {
   }, [])
   const cargarContadores = useCallback(() =>
     supabase.from('contadores').select('id,nombre,activo').order('nombre').then(({ data }) => setContadores(data || [])), [])
-  useEffect(() => { cargar(); cargarContadores() }, [cargar, cargarContadores])
+  const cargarRoles = useCallback(() =>
+    supabase.from('roles').select('*').order('creado_en').then(({ data }) => setRoles(data || [])), [])
+  useEffect(() => { cargar(); cargarContadores(); cargarRoles() }, [cargar, cargarContadores, cargarRoles])
+  const esAdmin = (rolId) => roles.find((r) => r.id === rolId)?.es_admin
+  const opcionesRol = roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)
 
   async function actualizar(u, cambios) {
     const { error } = await supabase.from('perfiles').update(cambios).eq('id', u.id)
@@ -64,11 +71,16 @@ export default function Usuarios({ perfil }) {
       <div className="titulo-accion">
         <h1>Usuarios</h1>
         <span className="espacio" />
-        <button className="btn btn-primario" onClick={() => setNuevo({ usuario: '', nombre: '', clave: '', rol: 'contador', ver_historial: false, crear_contador: true })}>
+        {vista === 'usuarios' && <button className="btn btn-primario" onClick={() => setNuevo({ usuario: '', nombre: '', clave: '', rol: 'contador', ver_historial: false, crear_contador: true })}>
           Nuevo usuario
-        </button>
+        </button>}
       </div>
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
+      <div className="pestanas" role="tablist">
+        <button role="tab" aria-selected={vista === 'usuarios'} className={vista === 'usuarios' ? 'sel' : ''} onClick={() => setVista('usuarios')}>Usuarios</button>
+        <button role="tab" aria-selected={vista === 'roles'} className={vista === 'roles' ? 'sel' : ''} onClick={() => setVista('roles')}>Roles y permisos</button>
+      </div>
+      {vista === 'roles' ? <RolesPermisos roles={roles} recargar={cargarRoles} /> : <>
 
       {!lista ? <Cargando /> : (
         <div className="tabla-envoltura">
@@ -83,7 +95,7 @@ export default function Usuarios({ perfil }) {
                     <td>{u.usuario}</td>
                     <td>
                       <select value={u.rol} disabled={yo} onChange={(e) => actualizar(u, { rol: e.target.value })}>
-                        <option value="contador">Contador</option><option value="tesorero">Tesorero</option>
+                        {opcionesRol}
                       </select>
                     </td>
                     <td>
@@ -93,7 +105,7 @@ export default function Usuarios({ perfil }) {
                       </select>
                     </td>
                     <td>
-                      {u.rol === 'tesorero' ? <span className="tenue">Siempre</span> : (
+                      {esAdmin(u.rol) ? <span className="tenue">Siempre</span> : (
                         <label className="check"><input type="checkbox" checked={u.ver_historial}
                           onChange={(e) => actualizar(u, { ver_historial: e.target.checked })} /> Permitir</label>
                       )}
@@ -110,6 +122,8 @@ export default function Usuarios({ perfil }) {
         </div>
       )}
 
+      </>}
+
       {nuevo && (
         <Modal titulo="Nuevo usuario" onCerrar={() => setNuevo(null)}>
           <form className="formulario" onSubmit={crear}>
@@ -124,10 +138,10 @@ export default function Usuarios({ perfil }) {
             </Campo>
             <Campo etiqueta="Rol">
               <select value={nuevo.rol} onChange={(e) => setNuevo({ ...nuevo, rol: e.target.value })}>
-                <option value="contador">Contador</option><option value="tesorero">Tesorero</option>
+                {opcionesRol}
               </select>
             </Campo>
-            {nuevo.rol === 'contador' && (
+            {!esAdmin(nuevo.rol) && (
               <label className="check campo-completo"><input type="checkbox" checked={nuevo.ver_historial}
                 onChange={(e) => setNuevo({ ...nuevo, ver_historial: e.target.checked })} /> Puede ver el historial completo de ingresos</label>
             )}

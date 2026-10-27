@@ -7,22 +7,15 @@ const saludo = () => {
   return h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches'
 }
 
-// Pantalla de inicio: accesos a los módulos agrupados
-export default function Inicio({ perfil, config, menu, ir, esTesorero }) {
+// Pantalla de inicio: un acceso por módulo, con su color
+export default function Inicio({ perfil, config, menu, ir, puede }) {
   const [saldos, setSaldos] = useState(null)
+  const verSaldos = puede('resumen')
   useEffect(() => {
-    if (!esTesorero) return
+    if (!verSaldos) return
     supabase.rpc('resumen_periodo', { p_desde: hoy(), p_hasta: hoy() }).then(({ data }) => setSaldos(data))
-  }, [esTesorero])
+  }, [verSaldos])
 
-  const grupos = []
-  for (const m of menu.filter((x) => x.id !== 'inicio')) {
-    let g = grupos.find((x) => x.nombre === m.grupo)
-    if (!g) grupos.push(g = { nombre: m.grupo, items: [] })
-    g.items.push(m)
-  }
-  const ORDEN = ['Operaciones', 'Control', 'Administración', 'Mi cuenta']
-  grupos.sort((a, b) => ORDEN.indexOf(a.nombre) - ORDEN.indexOf(b.nombre))
   const primerNombre = (perfil.nombre || '').split(' ')[0]
 
   return (
@@ -42,23 +35,15 @@ export default function Inicio({ perfil, config, menu, ir, esTesorero }) {
         )}
       </header>
 
-      {grupos.map((g) => (
-        <div key={g.nombre} className="inicio-grupo">
-          <h2>{g.nombre}</h2>
-          <div className="inicio-rejilla">
-            {g.items.map((m) => (
-              <button key={m.id} className="modulo" onClick={() => ir(m.id)}>
-                <span className="modulo-icono"><Icono nombre={m.icono} tam={26} /></span>
-                <span className="modulo-texto">
-                  <strong>{m.label}</strong>
-                  <span>{m.desc}</span>
-                </span>
-                <Icono nombre="flecha" tam={18} className="modulo-flecha" />
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="inicio-rejilla">
+        {menu.filter((m) => m.id !== 'inicio').map((m) => (
+          <button key={m.id} className="modulo" onClick={() => ir(m.id)} style={{ '--color-modulo': m.color }}>
+            <span className="modulo-icono"><Icono nombre={m.icono} tam={24} /></span>
+            <strong>{m.label}</strong>
+            <span className="modulo-desc">{m.desc}</span>
+          </button>
+        ))}
+      </div>
     </section>
   )
 }

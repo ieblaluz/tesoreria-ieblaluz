@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo } from '../components/ui'
 
-export default function Perfil({ perfil }) {
+export default function Perfil({ perfil, nombreRol }) {
   const [clave, setClave] = useState('')
   const [repite, setRepite] = useState('')
   const [msg, setMsg] = useState(null)
@@ -23,7 +23,7 @@ export default function Perfil({ perfil }) {
       <dl className="ficha">
         <dt>Nombre</dt><dd>{perfil.nombre}</dd>
         <dt>Usuario</dt><dd>{perfil.usuario}</dd>
-        <dt>Rol</dt><dd>{perfil.rol === 'tesorero' ? 'Tesorero' : 'Contador'}</dd>
+        <dt>Rol</dt><dd>{nombreRol}</dd>
       </dl>
       <form className="panel" onSubmit={cambiar}>
         <h2>Cambiar mi clave</h2>
