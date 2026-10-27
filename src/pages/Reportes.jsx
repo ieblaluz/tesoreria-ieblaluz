@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Tablon from './Tablon'
 import Recibos from './Recibos'
 import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, PresupuestoAnual } from './ReportesFinancieros'
@@ -26,7 +25,9 @@ const SECCIONES = [
 
 export default function Reportes(props) {
   const disponibles = SECCIONES.filter((s) => s.roles.includes(props.perfil.rol))
-  const [actual, setActual] = useState(disponibles.length === 1 ? disponibles[0].id : null)
+  // La sección elegida forma parte de la ruta (#reportes/recibos), así "atrás" vuelve al listado
+  const actual = props.sub || (disponibles.length === 1 ? disponibles[0].id : null)
+  const setActual = (id) => props.ir('reportes', id)
   const seccion = disponibles.find((s) => s.id === actual)
 
   if (!seccion) {
