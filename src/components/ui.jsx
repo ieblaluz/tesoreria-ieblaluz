@@ -1,11 +1,23 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
+// Ventana modal. El botón "atrás" del navegador o del móvil la cierra en lugar de cambiar de pantalla.
 export function Modal({ titulo, onCerrar, children, ancho }) {
+  const cerrarRef = useRef(onCerrar)
+  cerrarRef.current = onCerrar
   useEffect(() => {
-    const k = (e) => e.key === 'Escape' && onCerrar()
+    let porAtras = false
+    window.history.pushState({ modal: true }, '', window.location.href)
+    const alVolver = () => { porAtras = true; cerrarRef.current() }
+    const k = (e) => e.key === 'Escape' && cerrarRef.current()
+    window.addEventListener('popstate', alVolver)
     window.addEventListener('keydown', k)
-    return () => window.removeEventListener('keydown', k)
-  }, [onCerrar])
+    return () => {
+      window.removeEventListener('popstate', alVolver)
+      window.removeEventListener('keydown', k)
+      // Si se cerró con la ✕ o "Cancelar", quitamos la entrada que añadimos al historial
+      if (!porAtras && window.history.state?.modal) window.history.back()
+    }
+  }, [])
   return (
     <div className="modal-fondo" onMouseDown={(e) => e.target === e.currentTarget && onCerrar()}>
       <div className="modal" style={ancho ? { maxWidth: ancho } : undefined} role="dialog" aria-label={titulo}>
