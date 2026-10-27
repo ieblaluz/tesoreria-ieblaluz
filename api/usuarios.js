@@ -17,8 +17,8 @@ export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
   const { data: quien, error: errUser } = await admin.auth.getUser(token)
   if (errUser || !quien?.user) return res.status(401).json({ error: 'Sesión no válida. Vuelve a entrar.' })
-  const { data: yo } = await admin.from('perfiles').select('rol,activo').eq('id', quien.user.id).maybeSingle()
-  if (!yo || yo.rol !== 'tesorero' || !yo.activo) return res.status(403).json({ error: 'Solo el tesorero puede gestionar usuarios.' })
+  const { data: yo } = await admin.from('perfiles').select('rol,activo,roles(es_admin)').eq('id', quien.user.id).maybeSingle()
+  if (!yo || !yo.activo || !yo.roles?.es_admin) return res.status(403).json({ error: 'Solo el administrador puede gestionar usuarios.' })
 
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {})
 
@@ -36,6 +36,8 @@ export default async function handler(req, res) {
         email: `${usuario}@${DOMINIO}`, password: b.clave, email_confirm: true, user_metadata: { nombre },
       })
       if (error) throw error
+      const { data: rolValido } = await admin.from('roles').select('id').eq('id', b.rol || 'contador').maybeSingle()
+      const rol = rolValido?.id || 'contador'
       // Opcional: vincularlo a la lista de contadores (reutiliza uno con el mismo nombre)
       let contador_id = null
       if (b.crear_contador) {
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
         }
       }
       const { error: e2 } = await admin.from('perfiles').update({
-        nombre, usuario, rol: b.rol === 'tesorero' ? 'tesorero' : 'contador', ver_historial: !!b.ver_historial, contador_id,
+        nombre, usuario, rol, ver_historial: !!b.ver_historial, contador_id,
       }).eq('id', data.user.id)
       if (e2) throw e2
       return res.json({ ok: true })
