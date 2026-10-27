@@ -236,7 +236,7 @@ input[type="color"] { width: 52px; padding: 2px; }
 .login-iglesia { text-align: center; margin: -.75rem 0 .25rem; color: var(--tenue); font-size: .9rem; }
 
 /* ---------- Caja (registro de ingresos) ---------- */
-.caja-culto { display: grid; grid-template-columns: 170px auto repeat(3, 1fr); gap: 1rem; align-items: end; margin-bottom: 1.25rem; }
+.caja-culto { display: grid; grid-template-columns: 170px auto minmax(200px, 1fr) minmax(320px, 2fr); gap: 1rem; align-items: end; margin-bottom: 1.25rem; }
 .contador-fijo { min-height: 40px; display: flex; align-items: center; font-weight: 700; color: var(--primario); }
 .contaron { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; font-size: .9rem; }
 .caja-cuerpo { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 1.25rem; align-items: start; }
@@ -498,3 +498,12 @@ input[type="color"] { width: 52px; padding: 2px; }
 .tabla.permisos .col-rol { text-align: center; width: 130px; }
 .tabla.permisos th.col-rol small { display: block; font-weight: 400; color: var(--tenue); }
 .tabla.permisos input[type="checkbox"] { width: 18px; height: 18px; }
+
+/* ---------- Contaron (caja) ---------- */
+.contaron-caja { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-height: 40px; padding: .3rem .4rem .3rem .6rem;
+  background: #fff; border: 1px solid #CDD2DA; border-radius: 6px; }
+.contaron-caja .chips { flex: 1 1 auto; }
+.contaron-anadir { display: flex; gap: .4rem; flex: 1 1 240px; }
+.contaron-anadir input { min-height: 34px; padding: .35rem .6rem; }
+.contaron-anadir .btn { min-height: 34px; padding: .35rem .8rem; }
+.chip-ayudante { background: #FEF3E2; color: #8A4B08; }
