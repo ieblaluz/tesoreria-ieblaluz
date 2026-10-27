@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import Combobox from '../components/Combobox'
+import { AnalisisIngresos } from '../components/Analisis'
 
 const vacio = () => ({ fecha: hoy(), turno: 'Mañana', medio: 'Efectivo', hermano_id: '', grupo_id: '', monto: '', comentario: '' })
 
-export default function Ingresos() {
+export default function Ingresos({ config }) {
+  const [vista, setVista] = useState('registros')
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
   const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), grupo: '', turno: '', medio: '', texto: '' })
@@ -75,6 +77,12 @@ export default function Ingresos() {
         <h1>Ingresos</h1>
         <button className="btn btn-primario" onClick={() => setEditando(vacio())}>Nuevo ingreso</button>
       </div>
+      <div className="pestanas" role="tablist">
+        <button role="tab" aria-selected={vista === 'registros'} className={vista === 'registros' ? 'sel' : ''} onClick={() => setVista('registros')}>Registros</button>
+        <button role="tab" aria-selected={vista === 'analisis'} className={vista === 'analisis' ? 'sel' : ''} onClick={() => setVista('analisis')}>Análisis</button>
+      </div>
+      {vista === 'analisis' ? <AnalisisIngresos config={config} /> : (
+        <div className="flex-resto">
       <div className="filtros">
         <Campo etiqueta="Desde"><input type="date" value={f.desde} onChange={set('desde')} /></Campo>
         <Campo etiqueta="Hasta"><input type="date" value={f.hasta} onChange={set('hasta')} /></Campo>
@@ -113,6 +121,8 @@ export default function Ingresos() {
         </div>
       )}
 
+        </div>
+      )}
       {editando && (
         <Modal titulo={editando.id ? 'Editar ingreso' : 'Nuevo ingreso'} onCerrar={() => setEditando(null)}>
           <form className="formulario" onSubmit={guardar}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Tablon from './Tablon'
 import Recibos from './Recibos'
+import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, PresupuestoAnual } from './ReportesFinancieros'
 
 // Catálogo de reportes. Para añadir uno nuevo basta con sumarlo a esta lista.
 const TODOS = ['tesorero', 'contador']
@@ -9,6 +10,18 @@ const SECCIONES = [
     descripcion: 'Quién contó en cada culto y el reporte de ingresos del culto para firmar.' },
   { id: 'recibos', titulo: 'Recibo individual de contribuciones', icono: '❏', roles: ['tesorero'], C: Recibos,
     descripcion: 'Aportaciones de cada hermano en un periodo, con su total y la firma del tesorero.' },
+  { id: 'ingresos-egresos', titulo: 'Informe de ingresos y egresos', icono: '⇅', roles: ['tesorero'], C: InformeIngresosEgresos,
+    descripcion: 'Ingresos por grupo y gastos por subcuenta de un periodo, separados por efectivo y banco, con saldos.' },
+  { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', roles: ['tesorero'], C: IngresosMensuales,
+    descripcion: 'Aportaciones de un mes por número de sobre y domingo, sin nombres, para publicar.' },
+  { id: 'anuales', titulo: 'Ingresos anuales', icono: '▥', roles: ['tesorero'], C: IngresosAnuales,
+    descripcion: 'Aportaciones de cada hermano mes a mes durante un año.' },
+  { id: 'tres-anios', titulo: 'Ingresos de los últimos 3 años', icono: '▧', roles: ['tesorero'], C: IngresosTresAnios,
+    descripcion: 'Total aportado por cada hermano en cada uno de los tres últimos años, con DNI/NIE.' },
+  { id: 'proveedores', titulo: 'Proveedores trimestral', icono: '▨', roles: ['tesorero'], C: ProveedoresTrimestral,
+    descripcion: 'Gastos por proveedor en cada trimestre del año.' },
+  { id: 'presupuesto', titulo: 'Presupuesto anual', icono: '◫', roles: ['tesorero'], C: PresupuestoAnual,
+    descripcion: 'Gastos de cada subcuenta por mes frente a lo presupuestado, con su saldo.' },
 ]
 
 export default function Reportes(props) {
