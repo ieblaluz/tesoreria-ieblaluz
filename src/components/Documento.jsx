@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal } from './ui'
+import { dinero } from '../supabase'
 
 // Plantilla común para todos los reportes imprimibles del sistema.
 
@@ -55,7 +56,9 @@ export const nombreReporte = (nombre, fecha, fechaFin) =>
 
 // Vista previa + copia oculta que es lo único que se imprime.
 // archivo: nombre propuesto al "Guardar como PDF" (el navegador usa el título de la página)
-export function VistaDocumento({ titulo, archivo, onCerrar, listo, children }) {
+// horizontal: imprime en A4 apaisado · onExcel: muestra el botón "Descargar Excel"
+export function VistaDocumento({ titulo, archivo, onCerrar, listo, horizontal, onExcel, children }) {
+  const [exportando, setExportando] = useState(false)
   useEffect(() => {
     if (!archivo) return
     const anterior = document.title
@@ -63,20 +66,67 @@ export function VistaDocumento({ titulo, archivo, onCerrar, listo, children }) {
     return () => { document.title = anterior }
   }, [archivo])
 
+  async function excel() {
+    setExportando(true)
+    try { await onExcel() } finally { setExportando(false) }
+  }
+
   return (
     <>
-      <Modal titulo={titulo} onCerrar={onCerrar} ancho="920px">
+      <Modal titulo={titulo} onCerrar={onCerrar} ancho={horizontal ? '1220px' : '920px'}>
         <div className="vista-barra">
-          <span className="tenue">Vista previa · A4</span>
+          <span className="tenue">Vista previa · A4{horizontal ? ' horizontal' : ''}</span>
           <span className="espacio" />
           <button className="btn btn-suave" onClick={onCerrar}>Cerrar</button>
+          {onExcel && <button className="btn btn-suave" disabled={!listo || exportando} onClick={excel}>{exportando ? 'Generando…' : 'Descargar Excel'}</button>}
           <button className="btn btn-primario" disabled={!listo} onClick={() => window.print()}>Imprimir</button>
         </div>
         <div className="vista-fondo">
-          <div className="vista-hoja">{children}</div>
+          <div className={'vista-hoja' + (horizontal ? ' horizontal' : '')}>{children}</div>
         </div>
       </Modal>
-      {listo && createPortal(<div className="zona-impresion">{children}</div>, document.body)}
+      {listo && createPortal(
+        <div className="zona-impresion">
+          {horizontal && <style>{'@page { size: A4 landscape; margin: 12mm 12mm; }'}</style>}
+          {children}
+        </div>, document.body)}
     </>
   )
+}
+
+// Dibuja las tablas de un modelo de reporte (el mismo que se exporta a Excel)
+export function TablasModelo({ modelo }) {
+  return modelo.tablas.map((t, k) => (
+    <section key={k} className={'doc-seccion' + (modelo.compacto ? ' doc-compacto' : '') + (t.estrecha ? ' doc-estrecha' : '')}>
+      {t.subtitulo && <h2 className="doc-subtitulo">{t.subtitulo}</h2>}
+      {modelo.compacto && k === 0 && <p className="doc-unidad">Importes en euros</p>}
+      <table className="doc-tabla">
+        {!t.sinCabecera && (
+          <thead><tr>{t.columnas.map((c, i) => {
+            const num = c.tipo === 'dinero' || c.tipo === 'entero'
+            return <th key={i} className={num ? 'num' : ''} style={!num && c.ancho ? { minWidth: `${Math.round(c.ancho * (modelo.compacto ? 4.5 : 6))}px` } : undefined}>{c.t}</th>
+          })}</tr></thead>
+        )}
+        <tbody>
+          {t.filas.length === 0 && <tr><td colSpan={t.columnas.length} className="doc-vacio">{t.vacio || 'Sin datos para mostrar.'}</td></tr>}
+          {t.filas.map((f, j) => (
+            <tr key={j} className={f.tipo ? 'fila-' + f.tipo : ''}>
+              {t.columnas.map((c, i) => {
+                const v = f.celdas[i]
+                const num = c.tipo === 'dinero' || c.tipo === 'entero'
+                let texto = v
+                if (c.tipo === 'dinero') texto = v === '' || v == null ? '' : !Number(v) ? '–'
+                  : modelo.compacto ? Number(v).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' }) : dinero(v)
+                if (c.tipo === 'entero') texto = v === '' || v == null ? '' : Number(v) ? Number(v).toLocaleString('es-ES') : '–'
+                return (
+                  <td key={i} className={(num ? 'num' : '') + (f.tipo === 'total' && num && i === t.columnas.length - 1 ? ' doc-gran-total' : '')}
+                    style={i === 0 && f.nivel ? { paddingLeft: `${8 + f.nivel * 14}px` } : undefined}>{texto}</td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  ))
 }

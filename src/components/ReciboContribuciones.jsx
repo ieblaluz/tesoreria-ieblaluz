@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, fmtFecha, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Cargando } from './ui'
 import { Documento, Firmas, VistaDocumento, nombreReporte } from './Documento'
+import { exportarExcel } from '../excel'
 
 // Recibo individual de contribuciones: aportes de un hermano en un periodo
 export default function ReciboContribuciones({ hermanoId, desde, hasta, grupoId, config, onCerrar }) {
@@ -37,8 +38,20 @@ export default function ReciboContribuciones({ hermanoId, desde, hasta, grupoId,
   const nroRecibo = hermano ? `RC-${hermano.nro_sobre}-${hasta.replaceAll('-', '')}` : ''
   const listo = !!(hermano && filas)
 
+  const excel = () => exportarExcel({
+    titulo: 'Recibo individual de contribuciones', hoja: 'Recibo',
+    archivo: nombreReporte(`Recibo Individual de Contribuciones - ${nombre}`, desde, hasta),
+    meta: [['Nº de recibo', nroRecibo], ['Periodo', `${fmtFecha(desde)} – ${fmtFecha(hasta)}`],
+      ['Contribuyente', nombre], ['DNI/NIE', hermano.dni_nie || '—'], ['Nº de sobre', String(hermano.nro_sobre)]],
+    tablas: [{
+      columnas: [{ t: 'Fecha', ancho: 12 }, { t: 'Concepto', ancho: 34 }, { t: 'Medio', ancho: 12 }, { t: 'Importe', tipo: 'dinero' }],
+      filas: [...filas.map((f) => ({ celdas: [fmtFecha(f.fecha), f.grupo, f.medio, Number(f.monto)] })),
+        { celdas: ['Total aportado', '', '', total], tipo: 'total' }],
+    }],
+  }, config)
+
   return (
-    <VistaDocumento titulo={`Recibo de contribuciones · ${nombre}`} onCerrar={onCerrar} listo={listo}
+    <VistaDocumento titulo={`Recibo de contribuciones · ${nombre}`} onCerrar={onCerrar} listo={listo} onExcel={excel}
       archivo={listo ? nombreReporte(`Recibo Individual de Contribuciones - ${nombre}`, desde, hasta) : undefined}>
       {error && <Aviso>{error}</Aviso>}
       {!listo ? (!error && <Cargando />) : (
