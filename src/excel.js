@@ -43,6 +43,7 @@ export async function exportarExcel(modelo, config) {
       celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AZUL } }
       celda.alignment = { horizontal: c.tipo === 'dinero' || c.tipo === 'entero' ? 'right' : 'left', vertical: 'middle', wrapText: true }
     })
+    if (tabla.columnas.some((c) => String(c.t).includes('\n'))) cab.height = 32
     if (modelo.tablas.length === 1) filaCongelar = r
     if (!tabla.sinCabecera) r++
 

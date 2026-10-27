@@ -406,3 +406,28 @@ input[type="color"] { width: 52px; padding: 2px; }
 .etiqueta-tipo.reintegro { background: #FEF3E2; color: #8A4B08; }
 .doc-unidad { margin: -6px 0 6px; text-align: right; color: #667085; font-size: 10.5px; }
 .doc-compacto .doc-tabla td:not(.num) { min-width: 34px; }
+
+/* ---------- Reportes tabulares compactos ---------- */
+.doc-seccion { margin-bottom: 12px; }
+.doc-modelo .doc-subtitulo { margin: 0 0 3px; }
+.doc-modelo .doc-tabla { font-size: 12px; }
+.doc-modelo .doc-tabla th, .doc-modelo .doc-tabla td { padding: 3px 6px; line-height: 1.3; }
+.doc-modelo .doc-tabla thead th { vertical-align: bottom; }
+.doc-modelo .doc-tabla .num { width: auto; white-space: nowrap; }
+.th-linea { display: block; }
+.doc-modelo.doc-compacto .doc-tabla { font-size: 10.5px; }
+.doc-modelo.doc-compacto .doc-tabla th, .doc-modelo.doc-compacto .doc-tabla td { padding: 2px 3px; }
+@media print {
+  .doc-modelo .doc-tabla { font-size: 9pt; }
+  .doc-modelo.doc-compacto .doc-tabla { font-size: 7.5pt; }
+}
+@media print {
+  .doc-modelo .doc-tabla { font-size: 8.5pt; }
+  .doc-modelo .doc-tabla th, .doc-modelo .doc-tabla td { padding: 1.5pt 5pt; }
+  .doc-modelo { margin-bottom: 8pt; }
+  .doc-modelo.doc-compacto .doc-tabla { font-size: 7.5pt; }
+}
+.doc-lado { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; align-items: start; }
+.doc-lado .doc-tabla td:first-child { min-width: 0; }
+@media (max-width: 700px) { .doc-lado { grid-template-columns: 1fr; } }
+.doc-estrecha { width: 55%; min-width: 300px; margin-left: auto; }
