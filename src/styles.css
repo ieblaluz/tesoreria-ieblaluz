@@ -353,3 +353,56 @@ input[type="color"] { width: 52px; padding: 2px; }
   .con-tabla .tabla thead th { position: sticky; top: 0; z-index: 2; }
   .con-tabla .tabla tfoot td, .con-tabla .tabla tfoot th { position: sticky; bottom: 0; z-index: 2; }
 }
+
+/* ---------- Selección múltiple ---------- */
+.multi { position: relative; }
+.multi-boton { width: 100%; min-height: 40px; display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+  padding: .55rem .7rem; border: 1px solid #CDD2DA; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; }
+.multi-boton span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-boton.activo { border-color: var(--primario); color: var(--primario); font-weight: 600; }
+.multi-panel { position: absolute; z-index: 60; top: calc(100% + 4px); left: 0; min-width: 100%; width: max-content; max-width: 360px;
+  background: #fff; border: 1px solid #CDD2DA; border-radius: 6px; box-shadow: 0 10px 28px rgba(16,24,40,.16); padding: .5rem; }
+.multi-acciones { display: flex; justify-content: space-between; margin: .3rem 0; }
+.multi-panel ul { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; }
+.multi-panel li { padding: .2rem .25rem; }
+
+/* ---------- Tabla dinámica ---------- */
+.dinamica-barra { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-bottom: .75rem; }
+.dinamica-barra .espacio { flex: 1; }
+.dinamica-barra .segmentos button { padding: .4rem .8rem; min-height: 36px; font-size: .88rem; }
+.tabla.dinamica { font-size: .88rem; }
+.tabla.dinamica td, .tabla.dinamica th { padding: .45rem .6rem; white-space: nowrap; }
+.tabla.dinamica td:first-child { min-width: 260px; white-space: normal; }
+.tabla.dinamica .din-nivel-0 td { font-weight: 700; background: #F1F4F8; }
+.tabla.dinamica .din-nivel-1 td { font-weight: 600; }
+.tabla.dinamica .din-total { font-weight: 700; }
+.din-flecha { display: inline-block; width: 1.1rem; color: var(--tenue); }
+
+/* ---------- Reportes con filtros ---------- */
+.reporte-filtros { display: grid; gap: .75rem; }
+.reporte-filtros .aviso { margin: 0; }
+.reporte-filtros-campos { display: flex; flex-wrap: wrap; gap: .9rem 1rem; align-items: end; }
+.reporte-filtros-campos > .campo { min-width: 170px; flex: 0 1 220px; }
+.campo-check { min-height: 40px; align-self: end; }
+
+/* ---------- Documentos: tablas de modelo, apaisados y compactos ---------- */
+.vista-hoja.horizontal { max-width: 1123px; padding: 40px 44px; }
+.doc-seccion { margin-bottom: 18px; break-inside: auto; }
+.doc-tabla th { white-space: pre-line; }
+.doc-tabla .fila-subtotal td { font-weight: 700; border-top: 1px solid #101828; border-bottom: 0; }
+.doc-tabla .fila-total td { font-weight: 700; border-top: 1px solid #101828; border-bottom: 0; }
+.doc-tabla .fila-grupo td { font-weight: 700; }
+.doc-compacto .doc-tabla { font-size: 10.5px; }
+.doc-compacto .doc-tabla th, .doc-compacto .doc-tabla td { padding: 4px 4px; }
+.doc-compacto .doc-tabla .num { width: auto; }
+@media print {
+  .doc-compacto .doc-tabla { font-size: 7.5pt; }
+  .doc-tabla thead { display: table-header-group; }
+}
+
+/* ---------- Caja y banco ---------- */
+.etiqueta-tipo { font-size: .82rem; font-weight: 600; padding: .15rem .55rem; border-radius: 999px; }
+.etiqueta-tipo.deposito { background: #E7F4EC; color: #17553A; }
+.etiqueta-tipo.reintegro { background: #FEF3E2; color: #8A4B08; }
+.doc-unidad { margin: -6px 0 6px; text-align: right; color: #667085; font-size: 10.5px; }
+.doc-compacto .doc-tabla td:not(.num) { min-width: 34px; }
