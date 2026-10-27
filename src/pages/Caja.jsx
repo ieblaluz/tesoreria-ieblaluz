@@ -9,9 +9,9 @@ const nombreH = (h) => `${h.nombre} ${h.apellidos || ''}`.trim()
 
 export default function Caja({ perfil, config, esTesorero, puede }) {
   const [contadores, setContadores] = useState([])
-  const [contadorId, setContadorId] = useState(perfil.contador_id || '')
   const [contaron, setContaron] = useState([])
-  const [ayudante, setAyudante] = useState('')
+  const [persona, setPersona] = useState('')
+  const miContador = esTesorero ? null : perfil.contador_id
   const [activo, setActivo] = useState(0)
   const [reporte, setReporte] = useState(false)
   const [hermanos, setHermanos] = useState([])
@@ -48,10 +48,16 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
       .eq('fecha', fecha).eq('turno', turno).order('creado_en', { ascending: false })
     if (error) setMsg({ t: 'error', m: mensajeError(error) })
     setLineas(data || [])
-    const { data: t } = await supabase.from('tablon_semanal').select('id,contador_id,nombre_libre,creado_por,creado_en,contadores(nombre)')
-      .eq('fecha', fecha).eq('turno', turno)
+    const leerTablon = () => supabase.from('tablon_semanal').select('id,contador_id,nombre_libre,creado_por,creado_en,contadores(nombre)')
+      .eq('fecha', fecha).eq('turno', turno).order('creado_en')
+    let { data: t } = await leerTablon()
+    // El contador que entra queda anotado solo en el culto de hoy
+    if (miContador && fecha === hoy() && !(t || []).some((c) => c.contador_id === miContador)) {
+      await supabase.from('tablon_semanal').insert({ fecha, turno, contador_id: miContador })
+      ;({ data: t } = await leerTablon())
+    }
     setContaron(t || [])
-  }, [fecha, turno])
+  }, [fecha, turno, miContador])
   useEffect(() => { cargar() }, [cargar])
 
   const sugerencias = useMemo(() => {
@@ -97,11 +103,9 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     setGuardando(false)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     // Deja constancia en el tablón de quién contó este culto (si ya estaba, no se repite)
-    const anotar = []
-    if (contadorId && !contaron.some((c) => c.contador_id === contadorId)) anotar.push({ fecha, turno, contador_id: contadorId })
-    const ay = ayudante.trim()
-    if (ay && !contaron.some((c) => nombreContador(c).toLowerCase() === ay.toLowerCase())) anotar.push({ fecha, turno, nombre_libre: ay })
-    for (const fila of anotar) await supabase.from('tablon_semanal').insert(fila) // un duplicado simplemente se ignora
+    if (miContador && !contaron.some((c) => c.contador_id === miContador)) {
+      await supabase.from('tablon_semanal').insert({ fecha, turno, contador_id: miContador })
+    }
     setMsg({ t: 'ok', m: `Registrado: ${dinero(m)} de ${nombreH(hermano)}` })
     setBusca(''); setHermano(null); setMonto(''); setComentario('')
     refBusca.current?.focus()
@@ -115,7 +119,23 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     cargar()
   }
   const hoyLocal = hoy()
-  const puedeQuitar = (c) => c.creado_por === perfil.id && new Date(c.creado_en).toLocaleDateString('sv-SE') === hoyLocal
+  const puedeQuitar = (c) => (esTesorero || c.creado_por === perfil.id) && new Date(c.creado_en).toLocaleDateString('sv-SE') === hoyLocal
+
+  // Añade al tablón a un contador de la lista o, si el nombre no está en la lista, a un ayudante
+  async function anotarPersona(e) {
+    e?.preventDefault()
+    const texto = persona.trim()
+    if (!texto) return
+    const c = contadores.find((x) => x.nombre.toLowerCase() === texto.toLowerCase())
+    if (contaron.some((x) => nombreContador(x).toLowerCase() === texto.toLowerCase())) {
+      setPersona(''); return setMsg({ t: 'error', m: `${texto} ya está anotado en este culto.` })
+    }
+    const { error } = await supabase.from('tablon_semanal')
+      .insert(c ? { fecha, turno, contador_id: c.id } : { fecha, turno, nombre_libre: texto })
+    if (error) return setMsg({ t: 'error', m: error.code === '23505' ? `${texto} ya está anotado en este culto.` : mensajeError(error) })
+    setPersona('')
+    cargar()
+  }
 
   async function borrar(l) {
     if (!confirm(`¿Borrar ${dinero(l.monto)} de ${l.hermano_nombre}?`)) return
@@ -153,22 +173,29 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
           <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
             onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)} />
         </label>
-        <div className="campo">
-          <span className="campo-etiqueta">Contador</span>
-          {esTesorero ? (
-            <Combobox permitirVacio etiquetaVacio="Sin indicar" valor={contadorId} onCambio={setContadorId}
-              opciones={contadores.filter((c) => c.activo || c.id === contadorId).map((c) => ({ id: c.id, etiqueta: c.nombre }))} />
-          ) : (
-            <div className="contador-fijo">
-              {contadores.find((c) => c.id === contadorId)?.nombre
-                || <span className="campo-error">Tu usuario no está vinculado a un contador. Avisa al tesorero.</span>}
-            </div>
-          )}
+        <div className="campo campo-contaron">
+          <span className="campo-etiqueta">Contaron en este culto</span>
+          <div className="contaron-caja">
+            <span className="chips">
+              {contaron.length === 0 && <span className="tenue">Nadie anotado todavía</span>}
+              {contaron.map((c) => (
+                <span key={c.id} className={'chip' + (c.contador_id ? '' : ' chip-ayudante')} title={c.contador_id ? 'Contador' : 'Ayudante'}>
+                  {nombreContador(c)}
+                  {puedeQuitar(c) && <button type="button" aria-label={`Quitar a ${nombreContador(c)}`} onClick={() => quitarDelTablon(c)}>✕</button>}
+                </span>
+              ))}
+            </span>
+            <form className="contaron-anadir" onSubmit={anotarPersona}>
+              <input list="lista-contadores" value={persona} onChange={(e) => setPersona(e.target.value)}
+                placeholder="Contador o ayudante…" aria-label="Añadir persona que contó" />
+              <datalist id="lista-contadores">
+                {contadores.filter((c) => c.activo && !contaron.some((x) => x.contador_id === c.id)).map((c) => <option key={c.id} value={c.nombre} />)}
+              </datalist>
+              <button className="btn btn-suave" disabled={!persona.trim()}>+ Añadir</button>
+            </form>
+          </div>
+          {!esTesorero && !perfil.contador_id && <span className="campo-error">Tu usuario no está vinculado a un contador. Avisa al tesorero.</span>}
         </div>
-        <label className="campo">
-          <span className="campo-etiqueta">Ayudante (opcional)</span>
-          <input value={ayudante} onChange={(e) => setAyudante(e.target.value)} placeholder="Si alguien más ayudó a contar" />
-        </label>
       </div>
 
       <div className="caja-cuerpo">
@@ -224,16 +251,6 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
               <span>Banco {dinero(porMedio('Banco'))}</span>
             </div>
           </div>
-          {contaron.length > 0 && (
-            <div className="contaron">
-              <span className="tenue">Contaron:</span>
-              <span className="chips">{contaron.map((c) => (
-                <span key={c.id} className="chip">{nombreContador(c)}
-                  {puedeQuitar(c) && <button type="button" aria-label={`Quitar a ${nombreContador(c)}`} onClick={() => quitarDelTablon(c)}>✕</button>}
-                </span>
-              ))}</span>
-            </div>
-          )}
           {porGrupo.length > 1 && (
             <ul className="desglose">
               {porGrupo.map(([g, v]) => <li key={g}><span>{g}</span><span>{dinero(v)}</span></li>)}
