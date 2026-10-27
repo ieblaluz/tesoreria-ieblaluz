@@ -16,22 +16,21 @@ import Perfil from './pages/Perfil'
 import Reportes from './pages/Reportes'
 import Movimientos from './pages/Movimientos'
 
-const TODOS = ['tesorero', 'contador']
-const T = ['tesorero']
-// barra: aparece en la barra superior · admin: en el menú de usuario · movil: pestaña inferior en el móvil
+// permiso: módulo de permisos necesario ('admin' = solo administrador; null = todos)
+// barra: aparece en la barra superior y en las pestañas del móvil · cuenta: en el menú de usuario
 const MENU = [
-  { id: 'inicio', label: 'Inicio', icono: 'inicio', roles: TODOS, C: Inicio, barra: true, movil: true },
-  { id: 'resumen', label: 'Resumen', icono: 'resumen', roles: T, C: Resumen, barra: true, grupo: 'Control', desc: 'Saldos del periodo e ingresos y gastos de un vistazo' },
-  { id: 'caja', label: 'Registrar ingresos', corto: 'Registrar', icono: 'caja', roles: TODOS, C: Caja, barra: true, movil: true, grupo: 'Operaciones', desc: 'Caja del culto: sobres, montos y contadores' },
-  { id: 'ingresos', label: 'Ingresos', icono: 'ingresos', roles: T, C: Ingresos, barra: true, movil: true, grupo: 'Operaciones', desc: 'Registros y análisis de los ingresos' },
-  { id: 'gastos', label: 'Gastos', icono: 'gastos', roles: T, C: Gastos, barra: true, movil: true, grupo: 'Operaciones', desc: 'Registros y análisis de los gastos' },
-  { id: 'movimientos', label: 'Caja y banco', icono: 'movimientos', roles: T, C: Movimientos, barra: true, grupo: 'Operaciones', desc: 'Depósitos y reintegros entre efectivo y banco' },
-  { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', roles: T, C: Presupuesto, barra: true, grupo: 'Control', desc: 'Presupuestado frente a ejecutado por subcuenta' },
-  { id: 'reportes', label: 'Reportes', icono: 'reportes', roles: TODOS, C: Reportes, barra: true, grupo: 'Control', desc: 'Tablón, recibos, informes y exportación a Excel' },
-  { id: 'catalogos', label: 'Catálogos', icono: 'catalogos', roles: T, C: Catalogos, barra: true, grupo: 'Administración', desc: 'Hermanos, proveedores, cuentas y más' },
-  { id: 'usuarios', label: 'Usuarios', icono: 'usuarios', roles: T, C: Usuarios, admin: true, grupo: 'Administración', desc: 'Accesos, roles y claves' },
-  { id: 'configuracion', label: 'Configuración', icono: 'configuracion', roles: T, C: Configuracion, admin: true, grupo: 'Administración', desc: 'Logos, colores, firmas y opciones' },
-  { id: 'perfil', label: 'Mi perfil', icono: 'perfil', roles: TODOS, C: Perfil, admin: true, grupo: 'Mi cuenta', desc: 'Tus datos y cambio de clave' },
+  { id: 'inicio', label: 'Inicio', icono: 'inicio', permiso: null, C: Inicio, barra: true },
+  { id: 'resumen', label: 'Resumen', icono: 'resumen', permiso: 'resumen', C: Resumen, barra: true, color: '#6D4FC2', desc: 'Saldos del periodo y movimientos de un vistazo' },
+  { id: 'caja', label: 'Registrar ingresos', corto: 'Registrar', icono: 'caja', permiso: 'caja', C: Caja, barra: true, color: '#B7791F', desc: 'Caja del culto: sobres y montos' },
+  { id: 'ingresos', label: 'Ingresos', icono: 'ingresos', permiso: ['ingresos', 'ingresos_editar'], C: Ingresos, color: '#2F855A', desc: 'Registros y análisis' },
+  { id: 'gastos', label: 'Gastos', icono: 'gastos', permiso: 'gastos', C: Gastos, color: '#C05621', desc: 'Registros y análisis' },
+  { id: 'movimientos', label: 'Caja y banco', icono: 'movimientos', permiso: 'movimientos', C: Movimientos, color: '#2B6CB0', desc: 'Depósitos y reintegros' },
+  { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', permiso: 'presupuesto', C: Presupuesto, color: '#0F766E', desc: 'Presupuestado frente a ejecutado' },
+  { id: 'reportes', label: 'Reportes', icono: 'reportes', permiso: ['reportes', 'reportes_tablon'], C: Reportes, color: '#4C51BF', desc: 'Tablón, recibos, informes y Excel' },
+  { id: 'catalogos', label: 'Catálogos', icono: 'catalogos', permiso: 'catalogos', C: Catalogos, color: '#8B5E1A', desc: 'Hermanos, proveedores, cuentas…' },
+  { id: 'usuarios', label: 'Usuarios', icono: 'usuarios', permiso: 'admin', C: Usuarios, cuenta: true, color: '#B83280', desc: 'Accesos, roles y permisos' },
+  { id: 'configuracion', label: 'Configuración', icono: 'configuracion', permiso: 'admin', C: Configuracion, cuenta: true, color: '#475467', desc: 'Logos, colores y firmas' },
+  { id: 'perfil', label: 'Mi perfil', icono: 'perfil', permiso: null, C: Perfil, cuenta: true, color: '#2C7A7B', desc: 'Tus datos y tu clave' },
 ]
 
 // La ruta vive en el #: "#reportes/recibos" → pagina "reportes", sub "recibos"
@@ -48,6 +47,8 @@ export default function App() {
   const [masAbierto, setMasAbierto] = useState(false)
   const [usuarioAbierto, setUsuarioAbierto] = useState(false)
   const [avisoLogin, setAvisoLogin] = useState('')
+  const [rol, setRol] = useState(null)
+  const [permisos, setPermisos] = useState([])
   const refUsuario = useRef(null)
 
   const cargarConfig = useCallback(async () => {
@@ -85,6 +86,7 @@ export default function App() {
 
   const uid = sesion?.user?.id
   useEffect(() => {
+    setRol(null); setPermisos([])
     if (!uid) { setPerfil(null); return }
     supabase.from('perfiles').select('*').eq('id', uid).maybeSingle().then(({ data }) => {
       if (!data || !data.activo) {
@@ -93,6 +95,8 @@ export default function App() {
         return
       }
       setPerfil(data)
+      supabase.from('roles').select('*').eq('id', data.rol).maybeSingle().then(({ data: r }) => setRol(r || { id: data.rol, nombre: data.rol }))
+      supabase.from('permisos').select('modulo').eq('rol_id', data.rol).then(({ data: p }) => setPermisos((p || []).map((x) => x.modulo)))
     })
   }, [uid])
 
@@ -107,15 +111,18 @@ export default function App() {
 
   if (sesion === undefined) return <Cargando />
   if (!sesion) return <Login config={config} aviso={avisoLogin} limpiarAviso={() => setAvisoLogin('')} />
-  if (!perfil) return <Cargando />
+  if (!perfil || !rol) return <Cargando />
 
-  const esTesorero = perfil.rol === 'tesorero'
-  const menu = MENU.filter((m) => m.roles.includes(perfil.rol))
+  const esTesorero = !!rol.es_admin
+  const puede = (m) => esTesorero || (m !== 'admin' && permisos.includes(m))
+  const permitido = (p) => p == null || (Array.isArray(p) ? p.some(puede) : puede(p))
+  const menu = MENU.filter((m) => permitido(m.permiso))
+  const nombreRol = rol.nombre
   const actual = menu.find((m) => m.id === ruta.pagina) || menu[0]
   const Pagina = actual.C
   const enBarra = menu.filter((m) => m.barra)
-  const enAdmin = menu.filter((m) => m.admin)
-  const pestanas = menu.filter((m) => m.movil)
+  const enAdmin = menu.filter((m) => m.cuenta)
+  const pestanas = menu.filter((m) => m.barra)
   // La hoja "Más" también se cierra con el botón atrás del móvil
   const abrirHoja = () => { window.history.pushState({ hoja: true }, '', window.location.href); setMasAbierto(true) }
   const cerrarHoja = () => { if (window.history.state?.hoja) window.history.back(); else setMasAbierto(false) }
@@ -139,7 +146,7 @@ export default function App() {
         <div className="usuario-menu" ref={refUsuario}>
           <button className={'usuario-boton' + (enAdmin.some((m) => m.id === actual.id) ? ' activo' : '')} onClick={() => setUsuarioAbierto(!usuarioAbierto)} aria-expanded={usuarioAbierto}>
             <span className="avatar">{(perfil.nombre || '?').charAt(0).toUpperCase()}</span>
-            <span className="usuario-nombre">{perfil.nombre}<small>{esTesorero ? 'Tesorero' : 'Contador'}</small></span>
+            <span className="usuario-nombre">{perfil.nombre}<small>{nombreRol}</small></span>
           </button>
           {usuarioAbierto && (
             <div className="usuario-panel">
@@ -156,7 +163,7 @@ export default function App() {
 
       <main className="contenido">
         <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir} sub={ruta.sub}
-          menu={menu} esTesorero={esTesorero} />
+          menu={menu} esTesorero={esTesorero} puede={puede} nombreRol={nombreRol} />
       </main>
 
       <nav className="barra-inferior" aria-label="Navegación">
@@ -166,7 +173,7 @@ export default function App() {
           </button>
         ))}
         <button className={masAbierto ? 'activo' : ''} onClick={() => (masAbierto ? cerrarHoja() : abrirHoja())}>
-          <Icono nombre="mas" tam={23} /><span>Más</span>
+          <Icono nombre="perfil" tam={23} /><span>Cuenta</span>
         </button>
       </nav>
 
@@ -175,9 +182,9 @@ export default function App() {
           <div className="hoja" onClick={(e) => e.stopPropagation()}>
             <div className="hoja-asa" />
             <div className="hoja-usuario"><span className="avatar">{(perfil.nombre || '?').charAt(0).toUpperCase()}</span>
-              <span>{perfil.nombre}<small>{esTesorero ? 'Tesorero' : 'Contador'}</small></span></div>
+              <span>{perfil.nombre}<small>{nombreRol}</small></span></div>
             <div className="hoja-rejilla">
-              {menu.filter((m) => !m.movil).map((m) => (
+              {enAdmin.map((m) => (
                 <button key={m.id} className={m.id === actual.id ? 'activo' : ''} onClick={() => ir(m.id)}>
                   <Icono nombre={m.icono} tam={24} /><span>{m.corto || m.label}</span>
                 </button>

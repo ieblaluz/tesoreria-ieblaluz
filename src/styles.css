@@ -63,7 +63,6 @@ button, input, select { font: inherit; color: inherit; }
 .contenido { padding: 1.75rem 2rem 3rem; min-width: 0; max-width: 1680px; margin: 0 auto; }
 .barra-inferior, .hoja-fondo { display: none; }
 
-@media (max-width: 1500px) { .nav-item span { display: none; } .nav-item { padding: .55rem .7rem; } }
 @media (max-width: 1000px) { .usuario-nombre { display: none; } .marca small { display: none; } }
 
 /* Móvil: cabecera sencilla arriba y pestañas con iconos abajo, como una app */
@@ -108,27 +107,24 @@ button, input, select { font: inherit; color: inherit; }
 .inicio-saldos .principal { background: var(--primario); color: #fff; }
 .inicio-saldos .principal span { color: rgba(255,255,255,.75); }
 .inicio-saldos .principal strong { color: var(--luz); }
-.inicio-grupo { margin-bottom: 1.6rem; }
-.inicio-grupo h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--tenue); margin-bottom: .7rem; }
-.inicio-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .85rem; }
-.modulo { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .9rem; text-align: left; cursor: pointer;
-  background: var(--papel); border: 1px solid var(--linea); border-radius: 12px; padding: 1rem 1.1rem; color: var(--tinta);
-  transition: border-color .15s, box-shadow .15s, transform .15s; }
-.modulo:hover { border-color: color-mix(in srgb, var(--primario) 45%, #fff); box-shadow: 0 6px 18px rgba(16,24,40,.08); transform: translateY(-1px); }
-.modulo-icono { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; color: var(--primario);
-  background: color-mix(in srgb, var(--primario) 10%, #fff); }
-.modulo:hover .modulo-icono { background: var(--primario); color: #fff; }
-.modulo-texto { display: grid; gap: .15rem; }
-.modulo-texto strong { font-size: 1rem; }
-.modulo-texto span { font-size: .84rem; color: var(--tenue); line-height: 1.35; }
-.modulo-flecha { color: #98A2B3; }
+.inicio-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
+.modulo { --color-modulo: var(--primario); display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; text-align: left; cursor: pointer;
+  background: var(--papel); border: 1px solid var(--linea); border-radius: 16px; padding: 1.4rem 1.5rem 1.3rem; color: var(--tinta);
+  box-shadow: 0 1px 2px rgba(16,24,40,.04); transition: border-color .15s, box-shadow .15s, transform .15s; }
+.modulo:hover { border-color: color-mix(in srgb, var(--color-modulo) 40%, #fff); box-shadow: 0 8px 22px rgba(16,24,40,.08); transform: translateY(-2px); }
+.modulo-icono { width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: var(--color-modulo);
+  margin-bottom: 1rem; box-shadow: 0 4px 10px color-mix(in srgb, var(--color-modulo) 30%, transparent); }
+.modulo strong { font-size: 1.05rem; }
+.modulo-desc { font-size: .86rem; color: #98A2B3; line-height: 1.35; }
 @media (max-width: 860px) {
   .inicio-saldos { width: 100%; }
   .inicio-saldos div { flex: 1; min-width: 0; padding: .65rem .8rem; }
   .inicio-saldos strong { font-size: 1rem; }
-  .inicio-rejilla { grid-template-columns: 1fr 1fr; gap: .6rem; }
-  .modulo { grid-template-columns: 1fr; justify-items: start; gap: .6rem; padding: .9rem; }
-  .modulo-texto span, .modulo-flecha { display: none; }
+  .inicio-rejilla { grid-template-columns: 1fr 1fr; gap: .7rem; }
+  .modulo { padding: 1rem; border-radius: 14px; }
+  .modulo-icono { width: 44px; height: 44px; margin-bottom: .7rem; }
+  .modulo strong { font-size: .95rem; }
+  .modulo-desc { font-size: .78rem; }
 }
 @media (prefers-reduced-motion: reduce) { .modulo { transition: none; } .modulo:hover { transform: none; } }
 
@@ -496,3 +492,9 @@ input[type="color"] { width: 52px; padding: 2px; }
 .doc-lado .doc-tabla td:first-child { min-width: 0; }
 @media (max-width: 700px) { .doc-lado { grid-template-columns: 1fr; } }
 .doc-estrecha { width: 55%; min-width: 300px; margin-left: auto; }
+
+/* ---------- Roles y permisos ---------- */
+.tabla.permisos td small.sub { font-weight: 400; }
+.tabla.permisos .col-rol { text-align: center; width: 130px; }
+.tabla.permisos th.col-rol small { display: block; font-weight: 400; color: var(--tenue); }
+.tabla.permisos input[type="checkbox"] { width: 18px; height: 18px; }
