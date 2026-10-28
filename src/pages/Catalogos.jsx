@@ -3,7 +3,7 @@ import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 
 // Definición de cada catálogo: campos del formulario y columnas visibles
-const CATALOGOS = [
+export const CATALOGOS = [
   { id: 'hermanos', titulo: 'Hermanos', singular: 'hermano', orden: 'nro_sobre',
     numero: { campo: 'nro_sobre', rpc: 'siguiente_nro_sobre', nombre: 'número de sobre' },
     campos: [
@@ -131,7 +131,7 @@ function Catalogo({ def }) {
   )
 }
 
-function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
+export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
   const nuevo = !inicial.id
   const [form, setForm] = useState(() => {
     const f = {}
@@ -141,7 +141,8 @@ function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
   const [error, setError] = useState('')
   const [avisoNro, setAvisoNro] = useState('')
   const [guardando, setGuardando] = useState(false)
-  const nroTocado = useRef(false)
+  // Si el número viene ya escrito (p. ej. desde "Añadir nuevo"), no se sustituye por el sugerido
+  const nroTocado = useRef(!!(def.numero && inicial[def.numero.campo] !== undefined && inicial[def.numero.campo] !== ''))
   const num = def.numero
 
   // Sugerir el número siguiente (al abrir, o al cambiar de cuenta en subcuentas)
@@ -183,12 +184,12 @@ function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
       datos[c.k] = v === '' ? null : v
     }
     setGuardando(true)
-    const { error: er } = nuevo
-      ? await supabase.from(def.id).insert(datos)
-      : await supabase.from(def.id).update(datos).eq('id', inicial.id)
+    const { data: fila, error: er } = nuevo
+      ? await supabase.from(def.id).insert(datos).select().single()
+      : await supabase.from(def.id).update(datos).eq('id', inicial.id).select().single()
     setGuardando(false)
     if (er) return setError(mensajeError(er))
-    onGuardado(nuevo ? `${def.singular[0].toUpperCase() + def.singular.slice(1)} creado.` : 'Cambios guardados.')
+    onGuardado(nuevo ? `${def.singular[0].toUpperCase() + def.singular.slice(1)} creado.` : 'Cambios guardados.', fila)
   }
 
   async function eliminar() {

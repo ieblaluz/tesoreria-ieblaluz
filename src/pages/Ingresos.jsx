@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import Combobox from '../components/Combobox'
+import NuevoRegistro from '../components/NuevoRegistro'
 import { AnalisisIngresos } from '../components/Analisis'
 
 const vacio = () => ({ fecha: hoy(), turno: 'Mañana', medio: 'Efectivo', hermano_id: '', grupo_id: '', monto: '', comentario: '' })
 
 export default function Ingresos({ config, puede }) {
   const editable = puede('ingresos_editar')
+  const [alta, setAlta] = useState(null)
+  const altaPermitida = puede('catalogos')
   const [vista, setVista] = useState('registros')
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
@@ -133,11 +136,13 @@ export default function Ingresos({ config, puede }) {
             </Campo>
             <Campo etiqueta="Hermano" ancho="completo">
               <Combobox required valor={editando.hermano_id} onCambio={(v) => setEditando((p) => ({ ...p, hermano_id: v }))}
+                onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'hermanos', texto }) : undefined} etiquetaNuevo="Nuevo hermano"
                 opciones={hermanos.filter((h) => h.activo || h.id === editando.hermano_id)
                   .map((h) => ({ id: h.id, etiqueta: `${h.nro_sobre} · ${h.nombre} ${h.apellidos || ''}`.trim() }))} />
             </Campo>
             <Campo etiqueta="Grupo" ancho="completo">
               <Combobox required valor={editando.grupo_id} onCambio={(v) => setEditando((p) => ({ ...p, grupo_id: v }))}
+                onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'grupos_ingreso', texto }) : undefined} etiquetaNuevo="Nuevo grupo"
                 opciones={grupos.filter((g) => g.activo || g.id === editando.grupo_id).map((g) => ({ id: g.id, etiqueta: g.nombre }))} />
             </Campo>
             <Campo etiqueta="Medio">
@@ -153,6 +158,14 @@ export default function Ingresos({ config, puede }) {
             </div>
           </form>
         </Modal>
+      )}
+      {alta && (
+        <NuevoRegistro catalogo={alta.catalogo} texto={alta.texto} onCerrar={() => setAlta(null)}
+          onCreado={(fila) => {
+            const conActivo = { ...fila, activo: true }
+            if (alta.catalogo === 'hermanos') { setHermanos((l) => [...l, conActivo]); setEditando((p) => ({ ...p, hermano_id: fila.id })) }
+            else { setGrupos((l) => [...l, conActivo]); setEditando((p) => ({ ...p, grupo_id: fila.id })) }
+          }} />
       )}
     </section>
   )

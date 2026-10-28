@@ -2,12 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import Combobox from '../components/Combobox'
+import NuevoRegistro from '../components/NuevoRegistro'
 import { AnalisisGastos } from '../components/Analisis'
 
 const vacio = () => ({ fecha: hoy(), cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
   modalidad: 'Banco', monto: '', autorizador_id: '', comentario: '' })
 
-export default function Gastos({ config }) {
+export default function Gastos({ config, puede }) {
+  const [alta, setAlta] = useState(null)
+  const altaPermitida = puede('catalogos')
+  const nuevoEn = (catalogo, extra) => (altaPermitida ? (texto) => setAlta({ catalogo, texto, extra }) : undefined)
   const [vista, setVista] = useState('registros')
   const [cuentas, setCuentas] = useState([])
   const [subcuentas, setSubcuentas] = useState([])
@@ -166,11 +170,12 @@ export default function Gastos({ config }) {
             <Campo etiqueta="Fecha"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
             <Campo etiqueta="Factura"><input value={editando.factura} onChange={setE('factura')} /></Campo>
             <Campo etiqueta="Cuenta (ministerio)">
-              <Combobox required valor={editando.cuenta_id} onCambio={setV('cuenta_id')}
+              <Combobox required valor={editando.cuenta_id} onCambio={setV('cuenta_id')} onNuevo={nuevoEn('cuentas')} etiquetaNuevo="Nueva cuenta"
                 opciones={activos(cuentas, editando.cuenta_id).map((c) => ({ id: c.id, etiqueta: `${c.nro} · ${c.ministerio}` }))} />
             </Campo>
             <Campo etiqueta="Subcuenta">
               <Combobox required valor={editando.subcuenta_id} onCambio={setV('subcuenta_id')} disabled={!editando.cuenta_id}
+                onNuevo={nuevoEn('subcuentas', { cuenta_id: editando.cuenta_id })} etiquetaNuevo="Nueva subcuenta"
                 placeholder={editando.cuenta_id ? 'Escribe para buscar…' : 'Primero la cuenta'}
                 opciones={activos(subcuentas, editando.subcuenta_id).filter((s) => s.cuenta_id === editando.cuenta_id)
                   .map((s) => ({ id: s.id, etiqueta: `${s.nro} · ${s.nombre}` }))} />
@@ -185,10 +190,12 @@ export default function Gastos({ config }) {
             <Campo etiqueta="Concepto" ancho="completo"><input required value={editando.concepto} onChange={setE('concepto')} /></Campo>
             <Campo etiqueta="Proveedor (opcional)">
               <Combobox permitirVacio etiquetaVacio="Sin proveedor" valor={editando.proveedor_id} onCambio={setV('proveedor_id')}
+                onNuevo={nuevoEn('proveedores')} etiquetaNuevo="Nuevo proveedor"
                 opciones={activos(proveedores, editando.proveedor_id).map((p) => ({ id: p.id, etiqueta: p.nombre, detalle: p.cif_nie }))} />
             </Campo>
             <Campo etiqueta="Autoriza">
               <Combobox required valor={editando.autorizador_id} onCambio={setV('autorizador_id')}
+                onNuevo={nuevoEn('autorizadores')} etiquetaNuevo="Nuevo autorizador"
                 opciones={activos(autorizadores, editando.autorizador_id).map((a) => ({ id: a.id, etiqueta: a.nombre }))} />
             </Campo>
             <Campo etiqueta="Modalidad">
@@ -204,6 +211,19 @@ export default function Gastos({ config }) {
             </div>
           </form>
         </Modal>
+      )}
+      {alta && (
+        <NuevoRegistro catalogo={alta.catalogo} texto={alta.texto} extra={alta.extra} onCerrar={() => setAlta(null)}
+          onCreado={(fila) => {
+            const f = { ...fila, activo: true }
+            if (alta.catalogo === 'cuentas') { setCuentas((l) => [...l, f].sort((a, b) => a.nro - b.nro)); setV('cuenta_id')(fila.id) }
+            if (alta.catalogo === 'subcuentas') {
+              setSubcuentas((l) => [...l, f].sort((a, b) => a.nro - b.nro))
+              setEditando((p) => ({ ...p, cuenta_id: fila.cuenta_id, subcuenta_id: fila.id }))
+            }
+            if (alta.catalogo === 'proveedores') { setProveedores((l) => [...l, f].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setV('proveedor_id')(fila.id) }
+            if (alta.catalogo === 'autorizadores') { setAutorizadores((l) => [...l, f].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setV('autorizador_id')(fila.id) }
+          }} />
       )}
     </section>
   )

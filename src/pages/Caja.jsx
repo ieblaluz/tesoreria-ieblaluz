@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, dinero, hoy, aNumero, mensajeError } from '../supabase'
 import { Aviso } from '../components/ui'
 import Combobox from '../components/Combobox'
+import NuevoRegistro from '../components/NuevoRegistro'
 import ReporteCulto from '../components/ReporteCulto'
 
 const nombreContador = (c) => c.contadores?.nombre || c.nombre_libre || ''
@@ -11,6 +12,8 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   const [contadores, setContadores] = useState([])
   const [contaron, setContaron] = useState([])
   const [persona, setPersona] = useState('')
+  const [alta, setAlta] = useState(null) // { catalogo, texto } para el formulario de alta rápida
+  const altaPermitida = puede('catalogos')
   const miContador = esTesorero ? null : perfil.contador_id
   const [activo, setActivo] = useState(0)
   const [reporte, setReporte] = useState(false)
@@ -86,6 +89,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
       e.preventDefault()
       if (hermano) refMonto.current?.focus()
       else if (sugerencias[activo]) elegir(sugerencias[activo])
+      else if (busca.trim() && altaPermitida) setAlta({ catalogo: 'hermanos', texto: busca })
     }
   }
 
@@ -171,7 +175,8 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
         <label className="campo">
           <span className="campo-etiqueta">Grupo</span>
           <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
-            onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)} />
+            onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)}
+            onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'grupos_ingreso', texto }) : undefined} etiquetaNuevo="Nuevo grupo" />
         </label>
         <div className="campo campo-contaron">
           <span className="campo-etiqueta">Contaron en este culto</span>
@@ -219,6 +224,11 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
                     ))}
                   </ul>
                 : <span className="tenue">{busca ? 'Sin coincidencias' : 'Escribe el número del sobre o el nombre; usa ↑ ↓ y Enter'}</span>}
+            {!hermano && busca.trim() && altaPermitida && (
+              <button type="button" className="btn-texto nuevo-enlace" onClick={() => setAlta({ catalogo: 'hermanos', texto: busca })}>
+                + Nuevo hermano «{busca.trim()}»
+              </button>
+            )}
           </div>
           <label className="campo">
             <span className="campo-etiqueta">Monto</span>
@@ -274,6 +284,17 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
           )}
         </div>
       </div>
+      {alta && (
+        <NuevoRegistro catalogo={alta.catalogo} texto={alta.texto} onCerrar={() => setAlta(null)}
+          onCreado={(fila) => {
+            if (alta.catalogo === 'hermanos') {
+              setHermanos((l) => [...l, fila].sort((a, b) => a.nro_sobre - b.nro_sobre)); elegir(fila)
+            } else {
+              setGrupos((l) => [...l, fila].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setGrupoId(fila.id)
+              setTimeout(() => refBusca.current?.focus(), 0)
+            }
+          }} />
+      )}
     </section>
   )
 }
