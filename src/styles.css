@@ -507,3 +507,7 @@ input[type="color"] { width: 52px; padding: 2px; }
 .contaron-anadir input { min-height: 34px; padding: .35rem .6rem; }
 .contaron-anadir .btn { min-height: 34px; padding: .35rem .8rem; }
 .chip-ayudante { background: #FEF3E2; color: #8A4B08; }
+
+/* ---------- "Añadir nuevo" en listas de búsqueda ---------- */
+.combo-lista li.combo-nuevo { color: var(--primario); font-weight: 700; border-bottom: 1px solid var(--linea); }
+.nuevo-enlace { display: block; margin-top: .4rem; padding: .2rem 0; }
