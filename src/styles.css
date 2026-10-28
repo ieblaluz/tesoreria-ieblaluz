@@ -518,3 +518,5 @@ th.ordenable:hover { color: var(--primario); }
 .orden-flecha { font-size: .7em; color: var(--primario); }
 .modal-ayuda { margin: -.4rem 0 1rem; font-size: .88rem; }
 .casilla-destacada { background: #F6F7F9; border-radius: 8px; padding: .6rem .75rem; font-weight: 600; }
+.respaldo-estado { font-weight: 600; color: var(--pos); }
+.respaldo-estado.atrasado { color: #B54708; }
