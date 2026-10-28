@@ -9,9 +9,15 @@ export const CATALOGOS = [
     numero: { campo: 'nro_sobre', rpc: 'siguiente_nro_sobre', nombre: 'número de sobre' },
     campos: [
       { k: 'nro_sobre', l: 'Nº de sobre', t: 'numero', req: true },
-      { k: 'nombre', l: 'Nombre', req: true }, { k: 'apellidos', l: 'Apellidos' },
-      { k: 'dni_nie', l: 'DNI/NIE' }, { k: 'telefono', l: 'Teléfono', t: 'tel' }, { k: 'email', l: 'Email', t: 'email' },
+      { k: 'nombre', l: 'Nombre', req: true },
       { k: 'es_concepto', l: 'Sobre de concepto (representa un concepto, no una persona; p. ej. Alquiler Piso Pastoral)', t: 'check', ancho: 'completo', col: 'Tipo' },
+      // Datos personales: solo si NO es un sobre de concepto
+      { k: 'apellidos', l: 'Apellidos', si: (f) => !f.es_concepto },
+      { k: 'dni_nie', l: 'DNI/NIE', si: (f) => !f.es_concepto },
+      { k: 'telefono', l: 'Teléfono', t: 'tel', si: (f) => !f.es_concepto },
+      { k: 'email', l: 'Email', t: 'email', si: (f) => !f.es_concepto },
+      // Descripción: solo para los sobres de concepto
+      { k: 'descripcion', l: 'Comentario / descripción', ancho: 'completo', si: (f) => !!f.es_concepto },
     ],
     columnas: ['nro_sobre', 'nombre', 'apellidos', 'dni_nie', 'telefono', 'es_concepto'] },
   { id: 'pagadores', titulo: 'Pagadores', singular: 'pagador', orden: 'nombre',
@@ -184,6 +190,7 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
     for (const c of def.campos) {
       let v = form[c.k]
       if (c.t === 'check') { datos[c.k] = !!v; continue }
+      if (c.si && !c.si(form)) { datos[c.k] = null; continue } // campo oculto: se vacía
       if (typeof v === 'string') v = v.trim()
       if (c.req && (v === '' || v == null)) return setError(`Falta: ${c.l}.`)
       if (c.t === 'numero') {
@@ -212,18 +219,21 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
     <Modal titulo={nuevo ? `Nuevo ${def.singular}` : `Editar ${def.singular}`} onCerrar={onCerrar}>
       <form className="formulario" onSubmit={guardar}>
         <Aviso>{error}</Aviso>
-        {def.campos.map((c) => {
+        {def.campos.filter((c) => !c.si || c.si(form)).map((c) => {
           const esNro = num && c.k === num.campo
           const onChange = (e) => {
             if (esNro) nroTocado.current = true
             setForm({ ...form, [c.k]: e.target.value })
           }
+          if (c.t === 'check') return (
+            <label key={c.k} className="check campo-completo casilla-destacada">
+              <input type="checkbox" checked={!!form[c.k]} onChange={(e) => setForm({ ...form, [c.k]: e.target.checked })} /> {c.l}
+            </label>
+          )
           return (
             <Campo key={c.k} etiqueta={c.l} ancho={c.ancho}
               error={esNro ? avisoNro : ''} ayuda={esNro && nuevo ? 'Sugerido automáticamente; puedes cambiarlo.' : ''}>
-              {c.t === 'check' ? (
-                <input type="checkbox" checked={!!form[c.k]} onChange={(e) => setForm({ ...form, [c.k]: e.target.checked })} />
-              ) : c.t === 'ref' ? (
+              {c.t === 'ref' ? (
                 <select value={form[c.k]} onChange={onChange} required={c.req}>
                   <option value="">Elige…</option>
                   {(refs[c.ref] || []).filter((r) => r.activo || r.id === form[c.k]).map((r) =>
