@@ -1,20 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, setMoneda } from './supabase'
 import { Cargando } from './components/ui'
 import Icono from './components/Iconos'
 import Login from './pages/Login'
-import Inicio from './pages/Inicio'
-import Caja from './pages/Caja'
-import Resumen from './pages/Resumen'
-import Ingresos from './pages/Ingresos'
-import Gastos from './pages/Gastos'
-import Presupuesto from './pages/Presupuesto'
-import Catalogos from './pages/Catalogos'
-import Usuarios from './pages/Usuarios'
-import Configuracion from './pages/Configuracion'
-import Perfil from './pages/Perfil'
-import Reportes from './pages/Reportes'
-import Movimientos from './pages/Movimientos'
+const Inicio = lazy(() => import('./pages/Inicio'))
+const Caja = lazy(() => import('./pages/Caja'))
+const Resumen = lazy(() => import('./pages/Resumen'))
+const Ingresos = lazy(() => import('./pages/Ingresos'))
+const Gastos = lazy(() => import('./pages/Gastos'))
+const Presupuesto = lazy(() => import('./pages/Presupuesto'))
+const Catalogos = lazy(() => import('./pages/Catalogos'))
+const Usuarios = lazy(() => import('./pages/Usuarios'))
+const Configuracion = lazy(() => import('./pages/Configuracion'))
+const Perfil = lazy(() => import('./pages/Perfil'))
+const Reportes = lazy(() => import('./pages/Reportes'))
+const Movimientos = lazy(() => import('./pages/Movimientos'))
 
 // permiso: módulo de permisos necesario ('admin' = solo administrador; null = todos)
 // barra: aparece en la barra superior y en las pestañas del móvil · cuenta: en el menú de usuario
@@ -169,8 +169,10 @@ export default function App() {
       </header>
 
       <main className="contenido">
-        <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir} sub={ruta.sub}
-          menu={menu} esTesorero={esTesorero} puede={puede} nombreRol={nombreRol} />
+        <Suspense fallback={<Cargando />}>
+          <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir} sub={ruta.sub}
+            menu={menu} esTesorero={esTesorero} puede={puede} nombreRol={nombreRol} />
+        </Suspense>
       </main>
 
       <nav className="barra-inferior" aria-label="Navegación">
