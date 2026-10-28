@@ -511,3 +511,9 @@ input[type="color"] { width: 52px; padding: 2px; }
 /* ---------- "Añadir nuevo" en listas de búsqueda ---------- */
 .combo-lista li.combo-nuevo { color: var(--primario); font-weight: 700; border-bottom: 1px solid var(--linea); }
 .nuevo-enlace { display: block; margin-top: .4rem; padding: .2rem 0; }
+
+/* ---------- Cabeceras ordenables ---------- */
+th.ordenable { cursor: pointer; user-select: none; }
+th.ordenable:hover { color: var(--primario); }
+.orden-flecha { font-size: .7em; color: var(--primario); }
+.modal-ayuda { margin: -.4rem 0 1rem; font-size: .88rem; }

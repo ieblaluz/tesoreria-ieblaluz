@@ -20,7 +20,10 @@ export const primerDiaMes = () => hoy().slice(0, 8) + '01'
 export const fmtFecha = (d) => (d ? d.slice(0, 10).split('-').reverse().join('/') : '')
 
 export const aNumero = (v) => {
-  const n = parseFloat(String(v ?? '').trim().replace(/\s/g, '').replace(',', '.'))
+  let t = String(v ?? '').trim().replace(/\s|€/g, '')
+  // "1.300,50" (formato español) → 1300.50 ; "1300.5" → 1300.5
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(t)
   return Number.isFinite(n) ? n : NaN
 }
 
