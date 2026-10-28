@@ -5,7 +5,7 @@ const normal = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/
 // Lista desplegable con búsqueda: escribir para filtrar, flechas para moverse, Enter para elegir, Esc para cancelar.
 // opciones: [{ id, etiqueta, detalle? }]
 const Combobox = forwardRef(function Combobox(
-  { opciones, valor, onCambio, placeholder = 'Escribe para buscar…', vacio = 'Sin coincidencias', onElegido, required, disabled, permitirVacio, etiquetaVacio = 'Ninguno' }, ref
+  { opciones, valor, onCambio, placeholder = 'Escribe para buscar…', vacio = 'Sin coincidencias', onElegido, required, disabled, permitirVacio, etiquetaVacio = 'Ninguno', onNuevo, etiquetaNuevo = 'Añadir nuevo' }, ref
 ) {
   const [abierto, setAbierto] = useState(false)
   const [texto, setTexto] = useState('')
@@ -18,11 +18,12 @@ const Combobox = forwardRef(function Combobox(
   const seleccionada = lista.find((o) => o.id === valor)
   const filtradas = useMemo(() => {
     const t = normal(texto.trim())
-    if (!t) return lista
-    return lista.filter((o) => normal(`${o.etiqueta} ${o.detalle || ''}`).includes(t))
-  }, [texto, lista])
+    const encontradas = t ? lista.filter((o) => normal(`${o.etiqueta} ${o.detalle || ''}`).includes(t)) : lista
+    // Opción "+ Añadir nuevo" al principio de la lista (abre el formulario de alta)
+    return onNuevo ? [{ id: '__nuevo__', etiqueta: `+ ${etiquetaNuevo}${texto.trim() ? ` «${texto.trim()}»` : ''}`, nuevo: true }, ...encontradas] : encontradas
+  }, [texto, lista, onNuevo, etiquetaNuevo])
 
-  useEffect(() => { setActivo(0) }, [texto])
+  useEffect(() => { setActivo(onNuevo && texto.trim() && filtradas.length > 1 ? 1 : 0) }, [texto]) // eslint-disable-line
   useEffect(() => {
     if (!abierto) return
     refLista.current?.querySelector('[data-activo="true"]')?.scrollIntoView({ block: 'nearest' })
@@ -32,10 +33,12 @@ const Combobox = forwardRef(function Combobox(
     if (disabled) return
     setTexto('')
     const i = lista.findIndex((o) => o.id === valor)
+    const desfase = onNuevo ? 1 : 0
     setAbierto(true)
-    setTimeout(() => setActivo(i >= 0 ? i : 0), 0)
+    setTimeout(() => setActivo(i >= 0 ? i + desfase : desfase), 0)
   }
   function elegir(o) {
+    if (o.nuevo) { const t = texto.trim(); setAbierto(false); setTexto(''); return onNuevo(t) }
     onCambio(o.id)
     setAbierto(false); setTexto('')
     onElegido?.(o)
@@ -63,14 +66,14 @@ const Combobox = forwardRef(function Combobox(
       <span className="combo-flecha" aria-hidden="true">▾</span>
       {abierto && (
         <ul className="combo-lista" role="listbox" ref={refLista}>
-          {filtradas.length === 0 && <li className="combo-vacio">{vacio}</li>}
           {filtradas.map((o, i) => (
             <li key={o.id || '_vacio'} role="option" aria-selected={o.id === valor} data-activo={i === activo}
-              className={(i === activo ? 'activo' : '') + (o.id === valor ? ' elegido' : '')}
+              className={(i === activo ? 'activo' : '') + (o.id === valor ? ' elegido' : '') + (o.nuevo ? ' combo-nuevo' : '')}
               onMouseDown={(e) => { e.preventDefault(); elegir(o) }} onMouseEnter={() => setActivo(i)}>
               {o.etiqueta}{o.detalle && <small>{o.detalle}</small>}
             </li>
           ))}
+          {filtradas.filter((o) => !o.nuevo).length === 0 && <li className="combo-vacio">{vacio}</li>}
         </ul>
       )}
     </div>
