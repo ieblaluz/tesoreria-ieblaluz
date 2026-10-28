@@ -3,6 +3,7 @@ import { supabase, dinero, hoy, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Cargando } from '../components/ui'
 import Combobox from '../components/Combobox'
 import ReciboContribuciones from '../components/ReciboContribuciones'
+import useOrden from '../components/useOrden'
 
 const inicioAnio = () => `${new Date().getFullYear()}-01-01`
 
@@ -44,6 +45,7 @@ export default function Recibos({ config }) {
     return (filas || []).filter((h) => !t || `${h.sobre} ${h.nombre}`.toLowerCase().includes(t))
   }, [filas, f.texto])
   const total = visibles.reduce((s, h) => s + h.total, 0)
+  const [ordenadas, th] = useOrden(visibles)
 
   return (
     <div className="flex-resto">
@@ -62,10 +64,10 @@ export default function Recibos({ config }) {
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Sobre</th><th>Contribuyente</th><th className="num">Aportaciones</th><th className="num">Total</th><th /></tr></thead>
+            <thead><tr>{th('sobre', 'Sobre')}{th('nombre', 'Contribuyente')}{th('n', 'Aportaciones', 'num')}{th('total', 'Total', 'num')}<th /></tr></thead>
             <tbody>
               {visibles.length === 0 && <tr><td colSpan="5" className="tenue">No hay aportaciones con estos filtros.</td></tr>}
-              {visibles.map((h) => (
+              {ordenadas.map((h) => (
                 <tr key={h.id} className="clic" onClick={() => setRecibo(h.id)}>
                   <td>{h.sobre}</td><td>{h.nombre}</td>
                   <td className="num">{h.n}</td><td className="num">{dinero(h.total)}</td>

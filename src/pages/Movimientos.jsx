@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, dinero, hoy, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import useOrden from '../components/useOrden'
 
 const inicioAnio = () => `${new Date().getFullYear()}-01-01`
 const vacio = () => ({ fecha: hoy(), tipo: 'Depósito', monto: '', referencia: '', concepto: '' })
@@ -47,6 +48,7 @@ export default function Movimientos() {
     setEditando(null); cargar()
   }
 
+  const [ordenadas, th] = useOrden(filas, { monto: (x) => Number(x.monto) })
   const total = (t) => (filas || []).filter((x) => x.tipo === t).reduce((s, x) => s + Number(x.monto), 0)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const setE = (k) => (e) => setEditando({ ...editando, [k]: e.target.value })
@@ -77,10 +79,10 @@ export default function Movimientos() {
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Fecha</th><th>Tipo</th><th>Nº referencia</th><th>Concepto</th><th className="num">Monto</th></tr></thead>
+            <thead><tr>{th('fecha', 'Fecha')}{th('tipo', 'Tipo')}{th('referencia', 'Nº referencia')}{th('concepto', 'Concepto')}{th('monto', 'Monto', 'num')}</tr></thead>
             <tbody>
               {filas.length === 0 && <tr><td colSpan="5" className="tenue">No hay movimientos en este periodo.</td></tr>}
-              {filas.map((x) => (
+              {ordenadas.map((x) => (
                 <tr key={x.id} className="clic" onClick={() => setEditando({ ...x, monto: String(x.monto).replace('.', ','), referencia: x.referencia || '', concepto: x.concepto || '' })}>
                   <td>{fmtFecha(x.fecha)}</td>
                   <td><span className={'etiqueta-tipo ' + (x.tipo === 'Depósito' ? 'deposito' : 'reintegro')}>{x.tipo === 'Depósito' ? 'Efectivo → Banco' : 'Banco → Efectivo'}</span></td>

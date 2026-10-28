@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import RolesPermisos from '../components/RolesPermisos'
+import useOrden from '../components/useOrden'
 
 async function api(cuerpo) {
   const { data: { session } } = await supabase.auth.getSession()
@@ -36,6 +37,7 @@ export default function Usuarios({ perfil }) {
   useEffect(() => { cargar(); cargarContadores(); cargarRoles() }, [cargar, cargarContadores, cargarRoles])
   const esAdmin = (rolId) => roles.find((r) => r.id === rolId)?.es_admin
   const opcionesRol = roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)
+  const [ordenados, th] = useOrden(lista, { rol: (u) => roles.find((r) => r.id === u.rol)?.nombre, contador: (u) => contadores.find((c) => c.id === u.contador_id)?.nombre })
 
   async function actualizar(u, cambios) {
     const { error } = await supabase.from('perfiles').update(cambios).eq('id', u.id)
@@ -85,9 +87,9 @@ export default function Usuarios({ perfil }) {
       {!lista ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Contador vinculado</th><th>Ve historial de ingresos</th><th /></tr></thead>
+            <thead><tr>{th('nombre', 'Nombre')}{th('usuario', 'Usuario')}{th('rol', 'Rol')}{th('contador', 'Contador vinculado')}{th('ver_historial', 'Ve historial de ingresos')}<th /></tr></thead>
             <tbody>
-              {lista.map((u) => {
+              {ordenados.map((u) => {
                 const yo = u.id === perfil.id
                 return (
                   <tr key={u.id} className={u.activo ? '' : 'inactivo'}>

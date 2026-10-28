@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import useOrden from '../components/useOrden'
 
 // Definición de cada catálogo: campos del formulario y columnas visibles
 export const CATALOGOS = [
@@ -10,8 +11,13 @@ export const CATALOGOS = [
       { k: 'nro_sobre', l: 'Nº de sobre', t: 'numero', req: true },
       { k: 'nombre', l: 'Nombre', req: true }, { k: 'apellidos', l: 'Apellidos' },
       { k: 'dni_nie', l: 'DNI/NIE' }, { k: 'telefono', l: 'Teléfono', t: 'tel' }, { k: 'email', l: 'Email', t: 'email' },
+      { k: 'es_concepto', l: 'Sobre de concepto (representa un concepto, no una persona; p. ej. Alquiler Piso Pastoral)', t: 'check', ancho: 'completo', col: 'Tipo' },
     ],
-    columnas: ['nro_sobre', 'nombre', 'apellidos', 'dni_nie', 'telefono'] },
+    columnas: ['nro_sobre', 'nombre', 'apellidos', 'dni_nie', 'telefono', 'es_concepto'] },
+  { id: 'pagadores', titulo: 'Pagadores', singular: 'pagador', orden: 'nombre',
+    campos: [{ k: 'nombre', l: 'Nombre completo', req: true, ancho: 'completo' }, { k: 'dni_nie', l: 'DNI/NIE' }, { k: 'telefono', l: 'Teléfono', t: 'tel' },
+      { k: 'email', l: 'Email', t: 'email', ancho: 'completo' }],
+    columnas: ['nombre', 'dni_nie', 'telefono', 'email'] },
   { id: 'proveedores', titulo: 'Proveedores', singular: 'proveedor', orden: 'nombre',
     campos: [{ k: 'nombre', l: 'Proveedor', req: true, ancho: 'completo' }, { k: 'cif_nie', l: 'CIF/NIE', ancho: 'completo' }, { k: 'direccion', l: 'Dirección', ancho: 'completo' }],
     columnas: ['nombre', 'cif_nie', 'direccion'] },
@@ -74,6 +80,7 @@ function Catalogo({ def }) {
 
   const mostrar = (fila, k) => {
     const campo = def.campos.find((c) => c.k === k)
+    if (campo?.t === 'check') return fila[k] ? 'Concepto' : ''
     if (campo?.t === 'ref') {
       const r = (refs[campo.ref] || []).find((x) => x.id === fila[k])
       return r ? etiquetaRef[campo.ref](r) : ''
@@ -93,7 +100,8 @@ function Catalogo({ def }) {
     cargar()
   }
 
-  const titulos = Object.fromEntries(def.campos.map((c) => [c.k, c.l]))
+  const titulos = Object.fromEntries(def.campos.map((c) => [c.k, c.col || c.l]))
+  const [ordenadas, th] = useOrden(visibles, Object.fromEntries(def.columnas.map((k) => [k, (fila) => mostrar(fila, k)])))
 
   return (
     <div className="flex-resto">
@@ -107,9 +115,9 @@ function Catalogo({ def }) {
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr>{def.columnas.map((k) => <th key={k}>{titulos[k]}</th>)}<th /></tr></thead>
+            <thead><tr>{def.columnas.map((k) => th(k, titulos[k]))}<th /></tr></thead>
             <tbody>
-              {visibles.map((f) => (
+              {ordenadas.map((f) => (
                 <tr key={f.id} className={'clic' + (f.activo ? '' : ' inactivo')} onClick={() => setEditando(f)}>
                   {def.columnas.map((k) => <td key={k}>{mostrar(f, k)}</td>)}
                   <td className="acciones" onClick={(e) => e.stopPropagation()}>
@@ -135,7 +143,7 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
   const nuevo = !inicial.id
   const [form, setForm] = useState(() => {
     const f = {}
-    def.campos.forEach((c) => { f[c.k] = inicial[c.k] ?? '' })
+    def.campos.forEach((c) => { f[c.k] = inicial[c.k] ?? (c.t === 'check' ? false : '') })
     return f
   })
   const [error, setError] = useState('')
@@ -175,6 +183,7 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
     const datos = {}
     for (const c of def.campos) {
       let v = form[c.k]
+      if (c.t === 'check') { datos[c.k] = !!v; continue }
       if (typeof v === 'string') v = v.trim()
       if (c.req && (v === '' || v == null)) return setError(`Falta: ${c.l}.`)
       if (c.t === 'numero') {
@@ -212,7 +221,9 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
           return (
             <Campo key={c.k} etiqueta={c.l} ancho={c.ancho}
               error={esNro ? avisoNro : ''} ayuda={esNro && nuevo ? 'Sugerido automáticamente; puedes cambiarlo.' : ''}>
-              {c.t === 'ref' ? (
+              {c.t === 'check' ? (
+                <input type="checkbox" checked={!!form[c.k]} onChange={(e) => setForm({ ...form, [c.k]: e.target.checked })} />
+              ) : c.t === 'ref' ? (
                 <select value={form[c.k]} onChange={onChange} required={c.req}>
                   <option value="">Elige…</option>
                   {(refs[c.ref] || []).filter((r) => r.activo || r.id === form[c.k]).map((r) =>

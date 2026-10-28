@@ -3,6 +3,7 @@ import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mens
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
+import useOrden from '../components/useOrden'
 import { AnalisisGastos } from '../components/Analisis'
 
 const vacio = () => ({ fecha: hoy(), cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
@@ -63,6 +64,7 @@ export default function Gastos({ config, puede }) {
     return filas.filter((x) => `${x.concepto || ''} ${x.proveedor || ''} ${x.factura || ''} ${x.subcuenta} ${x.comentario || ''}`.toLowerCase().includes(t))
   }, [filas, f.texto])
   const total = visibles.reduce((s, x) => s + Number(x.monto), 0)
+  const [ordenadas, th] = useOrden(visibles, { subcuenta: (x) => Number(x.nro_subcuenta), monto: (x) => Number(x.monto) })
 
   let disponible = null
   if (pres && !pres.sin && editando) {
@@ -145,9 +147,9 @@ export default function Gastos({ config, puede }) {
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Fecha</th><th>Subcuenta</th><th>Concepto</th><th>Proveedor</th><th>Modalidad</th><th className="num">Monto</th></tr></thead>
+            <thead><tr>{th('fecha', 'Fecha')}{th('subcuenta', 'Subcuenta')}{th('concepto', 'Concepto')}{th('proveedor', 'Proveedor')}{th('modalidad', 'Modalidad')}{th('monto', 'Monto', 'num')}</tr></thead>
             <tbody>
-              {visibles.map((x) => (
+              {ordenadas.map((x) => (
                 <tr key={x.id} className="clic" onClick={() => abrir(x)}>
                   <td>{fmtFecha(x.fecha)}</td>
                   <td>{x.nro_subcuenta} · {x.subcuenta}<small className="sub">{x.ministerio}</small></td>

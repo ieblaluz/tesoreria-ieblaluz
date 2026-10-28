@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, hoy, fmtFecha, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Cargando } from '../components/ui'
 import ReporteCulto from '../components/ReporteCulto'
+import useOrden from '../components/useOrden'
 
 const haceTresMeses = () => { const d = new Date(); d.setMonth(d.getMonth() - 3); return d.toLocaleDateString('sv-SE') }
 
@@ -41,6 +42,7 @@ export default function Tablon({ config }) {
       .filter((c) => !t || c.personas.some((p) => p.nombre.toLowerCase().includes(t)))
       .sort((a, b) => (b.fecha + (b.turno === 'Tarde' ? 1 : 0)).localeCompare(a.fecha + (a.turno === 'Tarde' ? 1 : 0)))
   }, [registros, f.persona])
+  const [ordenadas, th] = useOrden(cultos, { contaron: (c) => c.personas.map((p) => p.nombre).join(', ') })
 
   return (
     <div className="flex-resto">
@@ -60,10 +62,10 @@ export default function Tablon({ config }) {
       {!registros ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr><th>Fecha</th><th>Turno</th><th>Contaron</th><th /></tr></thead>
+            <thead><tr>{th('fecha', 'Fecha')}{th('turno', 'Turno')}{th('contaron', 'Contaron')}<th /></tr></thead>
             <tbody>
               {cultos.length === 0 && <tr><td colSpan="4" className="tenue">No hay cultos con estos filtros.</td></tr>}
-              {cultos.map((c) => (
+              {ordenadas.map((c) => (
                 <tr key={c.fecha + c.turno} className="clic" onClick={() => setReporte({ fecha: c.fecha, turno: c.turno })}>
                   <td>{fmtFecha(c.fecha)}</td>
                   <td>{c.turno}</td>
