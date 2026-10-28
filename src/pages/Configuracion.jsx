@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo } from '../components/ui'
+import { leerTodo, descargarJSON, descargarExcel } from '../respaldo'
 
 const MONEDAS = [['EUR', 'Euro (€)'], ['USD', 'Dólar ($)']]
 const FONDOS = [['#FFFFFF', 'Blanco'], ['primario', 'Color principal'], ['transparente', 'Transparente']]
@@ -46,6 +47,7 @@ export default function Configuracion({ config, recargarConfig }) {
   const [tesoreros, setTesoreros] = useState([])
   const [msg, setMsg] = useState(null)
   const [subiendo, setSubiendo] = useState('')
+  const [respaldando, setRespaldando] = useState('')
 
   useEffect(() => {
     supabase.from('perfiles').select('nombre').eq('rol', 'tesorero').eq('activo', true).order('nombre')
@@ -106,10 +108,42 @@ export default function Configuracion({ config, recargarConfig }) {
     await recargarConfig(); setMsg({ t: 'ok', m: texto })
   }
 
+  async function respaldar(formato) {
+    setRespaldando('Preparando…')
+    try {
+      const datos = await leerTodo(setRespaldando)
+      setRespaldando('Generando archivo…')
+      if (formato === 'json') descargarJSON(datos); else await descargarExcel(datos)
+      await supabase.from('configuracion').update({ ultimo_respaldo: new Date().toISOString() }).eq('id', 1)
+      await recargarConfig()
+      const n = Object.values(datos).reduce((t, x) => t + x.length, 0)
+      setMsg({ t: 'ok', m: `Copia descargada (${n.toLocaleString('es-ES')} registros). Guárdala en un lugar seguro, por ejemplo Google Drive.` })
+    } catch (e) { setMsg({ t: 'error', m: mensajeError(e) }) }
+    setRespaldando('')
+  }
+  const diasDesdeRespaldo = config?.ultimo_respaldo ? Math.floor((Date.now() - new Date(config.ultimo_respaldo)) / 86400000) : null
+
   return (
     <section className="pagina estrecha">
       <h1>Configuración</h1>
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
+
+      <div className="panel">
+        <h2>Copia de seguridad</h2>
+        <p className="tenue">Descarga todos los datos de la tesorería: hermanos, ingresos, gastos, presupuestos, catálogos, tablón, usuarios y configuración.
+          El plan gratuito de Supabase no hace copias automáticas, así que conviene hacer una cada mes.</p>
+        <p className={'respaldo-estado' + (diasDesdeRespaldo === null || diasDesdeRespaldo > 30 ? ' atrasado' : '')}>
+          {diasDesdeRespaldo === null ? 'Todavía no se ha hecho ninguna copia.'
+            : diasDesdeRespaldo === 0 ? 'Última copia: hoy.'
+            : `Última copia: hace ${diasDesdeRespaldo} ${diasDesdeRespaldo === 1 ? 'día' : 'días'} (${new Date(config.ultimo_respaldo).toLocaleDateString('es-ES')}).`}
+        </p>
+        <div className="botonera">
+          <button className="btn btn-primario" disabled={!!respaldando} onClick={() => respaldar('json')}>Descargar copia completa (.json)</button>
+          <button className="btn btn-suave" disabled={!!respaldando} onClick={() => respaldar('excel')}>Descargar en Excel</button>
+          {respaldando && <span className="tenue">{respaldando}</span>}
+        </div>
+        <p className="tenue nota">La copia <b>.json</b> es la que sirve para restaurar el sistema si algún día hiciera falta. La de <b>Excel</b> es para consultar los datos con comodidad. Las claves de los usuarios no se incluyen: por seguridad, nunca salen de Supabase.</p>
+      </div>
 
       <div className="panel">
         <h2>Icono de la app</h2>
