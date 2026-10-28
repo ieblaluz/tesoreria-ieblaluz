@@ -36,6 +36,18 @@ function TablaDinamica({ filas, niveles, profundidadInicial, titulo, meta, archi
   const [profundidad, setProfundidad] = useState(profundidadInicial)
   const [abiertos, setAbiertos] = useState(new Set())
   const [exportando, setExportando] = useState(false)
+  const [orden, setOrden] = useState(null) // { col: 'texto' | 0..11 | 'total', dir }
+  const valorCol = (n, col) => (col === 'texto' ? n.texto : col === 'total' ? n.total : n.meses[col])
+  const ordenar = (lista) => {
+    if (!orden) return lista
+    const r = [...lista].sort((a, b) => {
+      const va = valorCol(a, orden.col), vb = valorCol(b, orden.col)
+      return typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), 'es', { numeric: true })
+    })
+    return orden.dir === 'desc' ? r.reverse() : r
+  }
+  const alternarOrden = (col) => setOrden((o) => (o?.col !== col ? { col, dir: col === 'texto' ? 'asc' : 'desc' } : o.dir === (col === 'texto' ? 'asc' : 'desc') ? { col, dir: col === 'texto' ? 'desc' : 'asc' } : null))
+  const flecha = (col) => (orden?.col === col ? <span className="orden-flecha">{orden.dir === 'asc' ? ' ▲' : ' ▼'}</span> : null)
 
   useEffect(() => {
     setAbiertos(new Set(todos.filter((n) => n.nivel < profundidad - 1).map((n) => n.id)))
@@ -46,7 +58,7 @@ function TablaDinamica({ filas, niveles, profundidadInicial, titulo, meta, archi
   const total = totMes.reduce((s, x) => s + x, 0)
 
   const visibles = []
-  const recorrer = (lista) => { for (const n of lista) { visibles.push(n); if (abiertos.has(n.id)) recorrer(n.hijos) } }
+  const recorrer = (lista) => { for (const n of ordenar(lista)) { visibles.push(n); if (abiertos.has(n.id)) recorrer(n.hijos) } }
   recorrer(nodos)
 
   async function excel() {
@@ -57,7 +69,7 @@ function TablaDinamica({ filas, niveles, profundidadInicial, titulo, meta, archi
         tablas: [{
           columnas: [{ t: niveles.map((n) => n.etiqueta).join(' / '), ancho: 46 }, ...MESES.map((m) => ({ t: m, tipo: 'dinero', ancho: 12 })), { t: 'Total', tipo: 'dinero' }],
           filas: [
-            ...todos.map((n) => ({ celdas: [n.texto, ...n.meses.map(r2), r2(n.total)], nivel: n.nivel, tipo: n.hijos.length ? 'grupo' : undefined })),
+            ...(function aplanarOrdenado(lista, out = []) { for (const n of ordenar(lista)) { out.push(n); aplanarOrdenado(n.hijos, out) } return out })(nodos).map((n) => ({ celdas: [n.texto, ...n.meses.map(r2), r2(n.total)], nivel: n.nivel, tipo: n.hijos.length ? 'grupo' : undefined })),
             { celdas: ['Suma total', ...totMes.map(r2), r2(total)], tipo: 'total' },
           ],
         }],
@@ -81,7 +93,11 @@ function TablaDinamica({ filas, niveles, profundidadInicial, titulo, meta, archi
       </div>
       <div className="tabla-envoltura">
         <table className="tabla dinamica">
-          <thead><tr><th>{niveles.map((n) => n.etiqueta).join(' / ')}</th>{MESES.map((m) => <th key={m} className="num">{m}</th>)}<th className="num">Total</th></tr></thead>
+          <thead><tr>
+            <th className="ordenable" onClick={() => alternarOrden('texto')}>{niveles.map((n) => n.etiqueta).join(' / ')}{flecha('texto')}</th>
+            {MESES.map((m, i) => <th key={m} className="num ordenable" onClick={() => alternarOrden(i)}>{m}{flecha(i)}</th>)}
+            <th className="num ordenable" onClick={() => alternarOrden('total')}>Total{flecha('total')}</th>
+          </tr></thead>
           <tbody>
             {visibles.length === 0 && <tr><td colSpan="14" className="tenue">No hay datos con estos filtros.</td></tr>}
             {visibles.map((n) => {
@@ -177,16 +193,19 @@ const NIVELES_INGRESOS = [
 ]
 export function AnalisisIngresos({ config }) {
   const [anio, setAnio] = useState(ANIO)
-  const [f, setF] = useState({ medio: '', grupos: [] })
-  const [datos, error] = useDatosAnio('v_ingresos', 'id,mes,monto,medio,grupo,grupo_id,hermano_id,nro_sobre,hermano_nombre,hermano_apellidos', anio)
+  const [f, setF] = useState({ medio: '', grupos: [], pagadores: [] })
+  const [datos, error] = useDatosAnio('v_ingresos', 'id,mes,monto,medio,grupo,grupo_id,hermano_id,nro_sobre,hermano_nombre,hermano_apellidos,pagador_id,pagador', anio)
+  const optPagadores = useMemo(() => opcionesDe((datos || []).filter((d) => d.pagador_id), (d) => d.pagador_id, (d) => d.pagador), [datos])
 
   const optGrupos = useMemo(() => opcionesDe(datos, (d) => d.grupo_id, (d) => d.grupo), [datos])
   const filas = useMemo(() => (datos || []).filter((d) => (!f.medio || d.medio === f.medio)
-    && (!f.grupos.length || f.grupos.includes(d.grupo_id))), [datos, f])
+    && (!f.grupos.length || f.grupos.includes(d.grupo_id))
+    && (!f.pagadores.length || f.pagadores.includes(d.pagador_id))), [datos, f])
 
   const meta = [['Año', String(anio)]]
   if (f.medio) meta.push(['Medio', f.medio])
   if (f.grupos.length) meta.push(['Grupos', optGrupos.filter((o) => f.grupos.includes(o.id)).map((o) => o.etiqueta).join(', ')])
+  if (f.pagadores.length) meta.push(['Pagado por', optPagadores.filter((o) => f.pagadores.includes(o.id)).map((o) => o.etiqueta).join(', ')])
 
   return (
     <div className="flex-resto">
@@ -196,6 +215,7 @@ export function AnalisisIngresos({ config }) {
           <select value={f.medio} onChange={(e) => setF({ ...f, medio: e.target.value })}><option value="">Todos</option><option>Efectivo</option><option>Banco</option></select>
         </Campo>
         <Campo etiqueta="Grupos"><MultiSelect opciones={optGrupos} seleccion={f.grupos} onCambio={(v) => setF({ ...f, grupos: v })} etiquetaTodas="Todos" /></Campo>
+        <Campo etiqueta="Pagado por"><MultiSelect opciones={optPagadores} seleccion={f.pagadores} onCambio={(v) => setF({ ...f, pagadores: v })} etiquetaTodas="Todos" /></Campo>
       </div>
       <Aviso>{error}</Aviso>
       {!datos ? <Cargando /> : (
