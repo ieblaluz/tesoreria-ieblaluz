@@ -520,3 +520,16 @@ th.ordenable:hover { color: var(--primario); }
 .casilla-destacada { background: #F6F7F9; border-radius: 8px; padding: .6rem .75rem; font-weight: 600; }
 .respaldo-estado { font-weight: 600; color: var(--pos); }
 .respaldo-estado.atrasado { color: #B54708; }
+
+/* ---------- Confirmaciones destacadas (encima de la ventana) ---------- */
+.modal.confirmacion { border-top: 6px solid #DC8B0B; box-shadow: 0 24px 60px rgba(16,24,40,.35); }
+.modal.confirmacion.peligro { border-top-color: var(--neg); }
+.confirmacion-cuerpo { display: flex; gap: .9rem; align-items: flex-start; font-size: 1rem; line-height: 1.45; margin-bottom: 1rem; }
+.confirmacion-icono { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.2rem;
+  background: #FEF3E2; color: #B54708; }
+.peligro .confirmacion-icono { background: #FDECEA; color: var(--neg); }
+.confirmacion-pin { margin-bottom: 1rem; }
+.confirmacion-pin input { font-size: 1.4rem; letter-spacing: .4em; text-align: center; }
+.btn-peligro-lleno { background: var(--neg); color: #fff; }
+.btn-peligro-lleno:hover { filter: brightness(1.08); }
+@media (max-width: 700px) { .vista-barra { flex-wrap: wrap; } .vista-barra > .tenue { width: 100%; } }
