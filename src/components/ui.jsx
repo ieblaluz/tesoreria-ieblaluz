@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Ventana modal. El botón "atrás" del navegador o del móvil la cierra en lugar de cambiar de pantalla.
-export function Modal({ titulo, onCerrar, children, ancho }) {
+export function Modal({ titulo, onCerrar, children, ancho, clase }) {
   const cerrarRef = useRef(onCerrar)
   cerrarRef.current = onCerrar
   useEffect(() => {
@@ -30,7 +30,7 @@ export function Modal({ titulo, onCerrar, children, ancho }) {
   }, [])
   return (
     <div className="modal-fondo" onMouseDown={(e) => e.target === e.currentTarget && onCerrar()}>
-      <div className="modal" style={ancho ? { maxWidth: ancho } : undefined} role="dialog" aria-label={titulo}>
+      <div className={'modal' + (clase ? ' ' + clase : '')} style={ancho ? { maxWidth: ancho } : undefined} role="dialog" aria-label={titulo}>
         <div className="modal-cab">
           <h2>{titulo}</h2>
           <button className="btn-icono" onClick={onCerrar} aria-label="Cerrar">✕</button>
