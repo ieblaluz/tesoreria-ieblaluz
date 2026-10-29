@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, fmtFecha, mensajeError } from '../supabase'
 import { Aviso, Cargando } from './ui'
+import { leerEstado } from '../offline'
 import { Documento, Firmas, VistaDocumento, nombreReporte } from './Documento'
 
 const importe = (n) => (Number(n) ? dinero(n) : '–')
 
 // Reporte de ingresos de un culto (fecha + turno), para imprimir y firmar
-export default function ReporteCulto({ fecha, turno, config, onCerrar }) {
+export default function ReporteCulto({ fecha, turno, config, onCerrar, datosLocales }) {
+  const [local, setLocal] = useState(false)
   const [r, setR] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.rpc('reporte_culto', { p_fecha: fecha, p_turno: turno }).then(({ data, error: e }) => {
-      if (e) setError(mensajeError(e)); else setR(data)
+    const est = leerEstado()
+    if (datosLocales && (!est.online || est.pendientes > 0)) {
+      datosLocales().then((d) => { setR(d); setLocal(true) }).catch((e) => setError(mensajeError(e)))
+      return
+    }
+    supabase.rpc('reporte_culto', { p_fecha: fecha, p_turno: turno }).then(async ({ data, error: e }) => {
+      if (!e && data) return setR(data)
+      // Sin conexión: se calcula con lo que hay en el dispositivo
+      if (datosLocales) { try { setR(await datosLocales()); setLocal(true); return } catch { /* sigue al error */ } }
+      setError(mensajeError(e))
     })
   }, [fecha, turno])
 
@@ -37,6 +47,7 @@ export default function ReporteCulto({ fecha, turno, config, onCerrar }) {
     <VistaDocumento titulo={`Reporte del culto · ${fmtFecha(fecha)} ${turno.toLowerCase()}`} archivo={nombreReporte(`Tablon Semanal ${turno}`, fecha)}
       onCerrar={onCerrar} listo={!!r}>
       {error && <Aviso>{error}</Aviso>}
+      {local && <Aviso tipo="aviso">Sin conexión: el reporte se ha calculado con los datos de este dispositivo, incluidos los ingresos pendientes de enviar.</Aviso>}
       {!r ? (!error && <Cargando />) : (
         <Documento config={config} titulo="Reporte de ingresos del culto"
           meta={[['Fecha', fmtFecha(fecha)], ['Turno', turno]]}>
