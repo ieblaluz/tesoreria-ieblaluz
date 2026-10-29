@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, aNumero, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import useConfirmar from '../components/Confirmar'
 
 export default function Presupuesto() {
   const anioActual = new Date().getFullYear()
@@ -10,6 +11,7 @@ export default function Presupuesto() {
   const [subcuentas, setSubcuentas] = useState([])
   const [editando, setEditando] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
 
   const cargarAnios = useCallback(async () => {
     const { data } = await supabase.from('presupuestos').select('anio')
@@ -47,25 +49,32 @@ export default function Presupuesto() {
     const m = aNumero(editando.monto)
     if (!editando.subcuenta_id) return setMsg({ t: 'error', m: 'Elige la subcuenta.' })
     if (!(m >= 0)) return setMsg({ t: 'error', m: 'Escribe un monto válido.' })
-    const datos = { anio, subcuenta_id: editando.subcuenta_id, monto: Math.round(m * 100) / 100, comentario: editando.comentario?.trim() || null }
-    const { error } = editando.id
-      ? await supabase.from('presupuestos').update(datos).eq('id', editando.id)
-      : await supabase.from('presupuestos').insert(datos)
-    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    const sub = subcuentas.find((x) => x.id === editando.subcuenta_id)
+    const r = await confirmar({ titulo: '¿Guardar la partida?', textoSi: 'Sí, guardar', pin: true,
+      mensaje: <>Presupuesto {anio} de <b>{sub?.nro} · {sub?.nombre}</b>: <b>{dinero(m)}</b>.</> })
+    if (!r) return
+    const { error } = await supabase.rpc('presupuesto_guardar', {
+      p_pin: r.pin, p_id: editando.id || null, p_anio: anio, p_subcuenta: editando.subcuenta_id,
+      p_monto: Math.round(m * 100) / 100, p_comentario: editando.comentario?.trim() || null })
+    if (error) return setMsg({ t: 'error', m: error.code === '23505' ? 'Esa subcuenta ya tiene presupuesto en este año.' : mensajeError(error) })
     setEditando(null); cargar(); cargarAnios()
   }
 
   async function borrar() {
-    if (!confirm('¿Quitar esta partida del presupuesto? Los gastos no se borran.')) return
-    const { error } = await supabase.from('presupuestos').delete().eq('id', editando.id)
+    const r = await confirmar({ titulo: '¿Quitar la partida?', textoSi: 'Sí, quitar', peligro: true, pin: true,
+      mensaje: <>Se quitará del presupuesto {anio} la partida de <b>{dinero(aNumero(editando.monto))}</b>. Los gastos registrados no se borran.</> })
+    if (!r) return
+    const { error } = await supabase.rpc('presupuesto_borrar', { p_pin: r.pin, p_id: editando.id })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
   }
 
   async function copiar() {
     const destino = anio + 1
-    if (!confirm(`¿Copiar el presupuesto de ${anio} a ${destino}? Las partidas que ya existan en ${destino} no se tocan.`)) return
-    const { data, error } = await supabase.rpc('copiar_presupuesto', { p_origen: anio, p_destino: destino })
+    const r = await confirmar({ titulo: `¿Copiar a ${destino}?`, textoSi: 'Sí, copiar', pin: true,
+      mensaje: <>Se copiarán las partidas de <b>{anio}</b> a <b>{destino}</b>. Las que ya existan en {destino} no se tocan.</> })
+    if (!r) return
+    const { data, error } = await supabase.rpc('copiar_presupuesto', { p_origen: anio, p_destino: destino, p_pin: r.pin })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setMsg({ t: 'ok', m: `Se copiaron ${data} partidas a ${destino}.` })
     await cargarAnios(); setAnio(destino)
@@ -141,6 +150,7 @@ export default function Presupuesto() {
           </form>
         </Modal>
       )}
+      {dialogo}
     </section>
   )
 }

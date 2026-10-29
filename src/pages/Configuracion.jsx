@@ -48,6 +48,20 @@ export default function Configuracion({ config, recargarConfig }) {
   const [msg, setMsg] = useState(null)
   const [subiendo, setSubiendo] = useState('')
   const [respaldando, setRespaldando] = useState('')
+  const [pin, setPin] = useState({ actual: '', nuevo: '', repite: '' })
+  const [pinExiste, setPinExiste] = useState(null)
+  useEffect(() => { supabase.rpc('pin_configurado').then(({ data }) => setPinExiste(!!data)) }, [])
+
+  async function guardarPin(e) {
+    e.preventDefault()
+    if (!/^\d{4,8}$/.test(pin.nuevo)) return setMsg({ t: 'error', m: 'El PIN debe tener entre 4 y 8 números.' })
+    if (pin.nuevo !== pin.repite) return setMsg({ t: 'error', m: 'Los dos PIN nuevos no coinciden.' })
+    const { error } = await supabase.rpc('establecer_pin', { p_actual: pin.actual || null, p_nuevo: pin.nuevo })
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setPin({ actual: '', nuevo: '', repite: '' }); setPinExiste(true)
+    setMsg({ t: 'ok', m: 'PIN guardado. Se pedirá para modificar el presupuesto.' })
+  }
+  const soloNumeros = (k) => (e) => setPin({ ...pin, [k]: e.target.value.replace(/\D/g, '').slice(0, 8) })
 
   useEffect(() => {
     supabase.from('perfiles').select('nombre').eq('rol', 'tesorero').eq('activo', true).order('nombre')
@@ -127,6 +141,16 @@ export default function Configuracion({ config, recargarConfig }) {
     <section className="pagina estrecha">
       <h1>Configuración</h1>
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
+
+      <form className="panel formulario" onSubmit={guardarPin}>
+        <h2 className="campo-completo">PIN de autorización del tesorero</h2>
+        <p className="tenue campo-completo" style={{ margin: 0 }}>Se pide para crear, modificar, quitar o copiar partidas del presupuesto.
+          {pinExiste === false && <b className="neg"> Todavía no hay PIN: créalo para poder modificar el presupuesto.</b>}</p>
+        {pinExiste && <Campo etiqueta="PIN actual" ancho="completo"><input type="password" inputMode="numeric" autoComplete="off" value={pin.actual} onChange={soloNumeros('actual')} /></Campo>}
+        <Campo etiqueta={pinExiste ? 'PIN nuevo' : 'PIN (4 a 8 números)'}><input type="password" inputMode="numeric" autoComplete="new-password" value={pin.nuevo} onChange={soloNumeros('nuevo')} /></Campo>
+        <Campo etiqueta="Repite el PIN"><input type="password" inputMode="numeric" autoComplete="new-password" value={pin.repite} onChange={soloNumeros('repite')} /></Campo>
+        <div className="botonera"><span className="espacio" /><button className="btn btn-primario">{pinExiste ? 'Cambiar PIN' : 'Crear PIN'}</button></div>
+      </form>
 
       <div className="panel">
         <h2>Copia de seguridad</h2>

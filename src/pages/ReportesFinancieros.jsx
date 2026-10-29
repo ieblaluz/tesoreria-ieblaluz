@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { supabase, hoy, primerDiaMes, fmtFecha, traerTodo } from '../supabase'
-import { Campo } from '../components/ui'
+import { supabase, hoy, primerDiaMes, fmtFecha, traerTodo, dinero, mensajeError } from '../supabase'
+import { Aviso, Campo, Cargando } from '../components/ui'
+import useOrden from '../components/useOrden'
+import { exportarExcel } from '../excel'
 import MultiSelect from '../components/MultiSelect'
 import SeccionReporte from '../components/SeccionReporte'
-import { nombreReporte } from '../components/Documento'
+import { nombreReporte, Documento, TablasModelo, VistaDocumento, Firmas } from '../components/Documento'
 
 // ---------- utilidades comunes ----------
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
@@ -19,7 +21,7 @@ const ingresosDe = (desde, hasta) => traerTodo(() => supabase.from('v_ingresos')
   .gte('fecha', desde).lte('fecha', hasta).order('id'))
 
 const gastosDe = (desde, hasta) => traerTodo(() => supabase.from('v_gastos')
-  .select('id,fecha,mes,trimestre,modalidad,monto,subcuenta_id,nro_subcuenta,subcuenta,nro_cuenta,ministerio,proveedor_id,proveedor,cif_nie')
+  .select('id,fecha,mes,trimestre,modalidad,monto,factura,concepto,subcuenta_id,nro_subcuenta,subcuenta,nro_cuenta,ministerio,proveedor_id,proveedor,cif_nie')
   .gte('fecha', desde).lte('fecha', hasta).order('id'))
 
 function SelectorAnio({ valor, onCambio, etiqueta = 'Año' }) {
@@ -42,9 +44,21 @@ function useGrupos() {
   }, [])
   return grupos
 }
+function useHermanos() {
+  const [hermanos, setHermanos] = useState([])
+  useEffect(() => {
+    supabase.from('hermanos').select('id,nro_sobre,nombre,apellidos').order('nro_sobre').then(({ data }) => setHermanos(data || []))
+  }, [])
+  return hermanos
+}
 function FiltroIngresos({ grupos, f, setF }) {
+  const hermanos = useHermanos()
   return (
     <>
+      <Campo etiqueta="Sobres / hermanos">
+        <MultiSelect opciones={hermanos.map((h) => ({ id: h.id, etiqueta: `${h.nro_sobre} · ${h.nombre} ${h.apellidos || ''}`.trim() }))}
+          seleccion={f.sobres || []} onCambio={(v) => setF({ ...f, sobres: v })} etiquetaTodas="Todos los sobres" />
+      </Campo>
       <Campo etiqueta="Grupos">
         <MultiSelect opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} seleccion={f.grupos}
           onCambio={(v) => setF({ ...f, grupos: v })} etiquetaTodas="Todos los grupos" />
@@ -57,7 +71,9 @@ function FiltroIngresos({ grupos, f, setF }) {
   )
 }
 const filtrarIngresos = (filas, f) => filas.filter((x) =>
-  (f.cero || Number(x.nro_sobre) !== 0) && (!f.grupos.length || f.grupos.includes(x.grupo_id)))
+  (f.cero || Number(x.nro_sobre) !== 0) && (!f.grupos.length || f.grupos.includes(x.grupo_id))
+  && (!f.sobres?.length || f.sobres.includes(x.hermano_id)))
+const metaSobres = (f) => (f.sobres?.length ? [['Sobres', `${f.sobres.length} seleccionados`]] : [])
 const textoGrupos = (f, grupos) => (f.grupos.length
   ? grupos.filter((g) => f.grupos.includes(g.id)).map((g) => g.nombre).join(', ')
   : 'Todos')
@@ -166,7 +182,7 @@ export function IngresosMensuales({ config }) {
     return {
       titulo: 'Ingresos mensuales', hoja: `${MESES_LARGOS[f.mes - 1]} ${f.anio}`,
       archivo: nombreReporte(`Ingresos Mensuales ${MESES_LARGOS[f.mes - 1]}`, desde),
-      meta: [['Mes', `${MESES_LARGOS[f.mes - 1]} ${f.anio}`], ['Grupos', textoGrupos(f, grupos)]],
+      meta: [['Mes', `${MESES_LARGOS[f.mes - 1]} ${f.anio}`], ['Grupos', textoGrupos(f, grupos)], ...metaSobres(f)],
       tablas: [{
         columnas: [{ t: 'Sobre', tipo: 'texto', ancho: 9 },
           ...domingos.map((d, i) => ({ t: `Semana ${i + 1}\n${fmtFecha(d)}`, tipo: 'dinero' })), { t: 'Total', tipo: 'dinero' }],
@@ -216,7 +232,7 @@ export function IngresosAnuales({ config }) {
     return {
       titulo: 'Ingresos anuales', hoja: `Ingresos ${f.anio}`, horizontal: true, compacto: true,
       archivo: nombreReporte(`Ingresos Anuales ${f.anio}`),
-      meta: [['Año', String(f.anio)], ['Grupos', textoGrupos(f, grupos)]],
+      meta: [['Año', String(f.anio)], ['Grupos', textoGrupos(f, grupos)], ...metaSobres(f)],
       tablas: [{
         columnas: [{ t: 'Sobre', ancho: 8 }, { t: 'Nombre', ancho: 18 }, { t: 'Apellidos', ancho: 22 },
           ...MESES.map((n) => ({ t: n, tipo: 'dinero', ancho: 11 })), { t: 'Total', tipo: 'dinero' }],
@@ -259,7 +275,7 @@ export function IngresosTresAnios({ config }) {
     return {
       titulo: 'Ingresos de los últimos 3 años', hoja: `Ingresos ${anios[2]}-${anios[0]}`,
       archivo: nombreReporte(`Ingresos 3 Años ${anios[2]}-${anios[0]}`),
-      meta: [['Años', `${anios[2]} – ${anios[0]}`], ['Grupos', textoGrupos(f, grupos)]],
+      meta: [['Años', `${anios[2]} – ${anios[0]}`], ['Grupos', textoGrupos(f, grupos)], ...metaSobres(f)],
       tablas: [{
         columnas: [{ t: 'Sobre', ancho: 8 }, { t: 'Hermano', ancho: 34 }, { t: 'DNI/NIE', ancho: 16 },
           ...anios.map((a) => ({ t: String(a), tipo: 'dinero' })), { t: 'Total', tipo: 'dinero' }],
@@ -281,27 +297,45 @@ export function IngresosTresAnios({ config }) {
 }
 
 // ---------- Proveedores trimestral ----------
+function useCatalogo(tabla, columnas, orden) {
+  const [filas, setFilas] = useState([])
+  useEffect(() => { supabase.from(tabla).select(columnas).order(orden).then(({ data }) => setFilas(data || [])) }, [tabla, columnas, orden])
+  return filas
+}
+const TRIM = ['I', 'II', 'III', 'IV']
+
 export function ProveedoresTrimestral({ config }) {
-  const [anio, setAnio] = useState(ANIO)
+  const proveedores = useCatalogo('proveedores', 'id,nombre,cif_nie', 'nombre')
+  const [f, setF] = useState({ anio: ANIO, proveedores: [], min: '', max: '', trimestres: [] })
 
   async function construir() {
-    const gas = (await gastosDe(`${anio}-01-01`, `${anio}-12-31`)).filter((x) => x.proveedor_id)
+    const gas = (await gastosDe(`${f.anio}-01-01`, `${f.anio}-12-31`)).filter((x) => x.proveedor_id)
     const m = new Map()
     for (const x of gas) {
-      if (!m.has(x.proveedor_id)) m.set(x.proveedor_id, { cif: x.cif_nie || '', nombre: x.proveedor, t: [0, 0, 0, 0] })
+      if (!m.has(x.proveedor_id)) m.set(x.proveedor_id, { id: x.proveedor_id, cif: x.cif_nie || '', nombre: x.proveedor, t: [0, 0, 0, 0] })
       m.get(x.proveedor_id).t[x.trimestre - 1] += Number(x.monto)
     }
-    const filas = [...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+    const min = f.min === '' ? null : Number(String(f.min).replace(',', '.'))
+    const max = f.max === '' ? null : Number(String(f.max).replace(',', '.'))
+    const filas = [...m.values()]
+      .filter((p) => !f.proveedores.length || f.proveedores.includes(p.id))
+      .filter((p) => { const t = suma(p.t); return (min == null || t >= min) && (max == null || t <= max) })
+      .filter((p) => f.trimestres.every((i) => p.t[i] > 0))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
     const tot = [0, 1, 2, 3].map((i) => suma(filas.map((p) => p.t[i])))
+    const meta = [['Año', String(f.anio)]]
+    if (f.proveedores.length) meta.push(['Proveedores', `${f.proveedores.length} seleccionados`])
+    if (min != null || max != null) meta.push(['Total entre', `${min ?? 0} € y ${max ?? '…'} €`])
+    if (f.trimestres.length) meta.push(['Con gasto en', f.trimestres.map((i) => `${TRIM[i]} trim.`).join(', ')])
     return {
-      titulo: 'Proveedores trimestral', hoja: `Proveedores ${anio}`, horizontal: true,
-      archivo: nombreReporte(`Proveedores Trimestral ${anio}`),
-      meta: [['Año', String(anio)]],
+      titulo: 'Proveedores trimestral', hoja: `Proveedores ${f.anio}`, horizontal: true,
+      archivo: nombreReporte(`Proveedores Trimestral ${f.anio}`),
+      meta,
       tablas: [{
         columnas: [{ t: 'CIF/NIE', ancho: 14 }, { t: 'Proveedor', ancho: 42 },
           { t: 'I trimestre', tipo: 'dinero' }, { t: 'II trimestre', tipo: 'dinero' }, { t: 'III trimestre', tipo: 'dinero' },
           { t: 'IV trimestre', tipo: 'dinero' }, { t: 'Total', tipo: 'dinero' }],
-        vacio: 'No hay gastos con proveedor en este año.',
+        vacio: 'No hay proveedores con estos filtros.',
         filas: [
           ...filas.map((p) => ({ celdas: [p.cif, p.nombre, ...p.t.map(r2), r2(suma(p.t))] })),
           { celdas: ['Totales', '', ...tot.map(r2), r2(suma(tot))], tipo: 'total' },
@@ -310,16 +344,123 @@ export function ProveedoresTrimestral({ config }) {
     }
   }
 
+  const alternarTrim = (i) => setF({ ...f, trimestres: f.trimestres.includes(i) ? f.trimestres.filter((x) => x !== i) : [...f.trimestres, i].sort() })
   return (
-    <SeccionReporte construir={construir} config={config} nota="Incluye solo los gastos que tienen proveedor asignado.">
-      <SelectorAnio valor={anio} onCambio={setAnio} />
+    <SeccionReporte construir={construir} config={config} nota="Incluye solo los gastos que tienen proveedor asignado. El rango de montos se aplica al total del año.">
+      <SelectorAnio valor={f.anio} onCambio={(v) => setF({ ...f, anio: v })} />
+      <Campo etiqueta="Proveedores (nombre o CIF/NIE)">
+        <MultiSelect opciones={proveedores.map((p) => ({ id: p.id, etiqueta: `${p.nombre}${p.cif_nie ? ' · ' + p.cif_nie : ''}` }))}
+          seleccion={f.proveedores} onCambio={(v) => setF({ ...f, proveedores: v })} etiquetaTodas="Todos" />
+      </Campo>
+      <Campo etiqueta="Total desde (€)"><input inputMode="decimal" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} placeholder="0" /></Campo>
+      <Campo etiqueta="Total hasta (€)"><input inputMode="decimal" value={f.max} onChange={(e) => setF({ ...f, max: e.target.value })} placeholder="Sin límite" /></Campo>
+      <div className="campo">
+        <span className="campo-etiqueta">Con gasto en el trimestre</span>
+        <div className="segmentos">
+          {TRIM.map((t, i) => <button key={t} type="button" className={f.trimestres.includes(i) ? 'sel' : ''} onClick={() => alternarTrim(i)}>{t}</button>)}
+        </div>
+      </div>
     </SeccionReporte>
+  )
+}
+
+// ---------- Reporte individual de proveedor ----------
+export function ReporteProveedor({ config }) {
+  const inicio = `${ANIO}-01-01`
+  const [f, setF] = useState({ desde: inicio, hasta: hoy(), texto: '' })
+  const [filas, setFilas] = useState(null)
+  const [modelo, setModelo] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!f.desde || !f.hasta || f.desde > f.hasta) return
+    setFilas(null)
+    gastosDe(f.desde, f.hasta).then((gas) => {
+      const m = new Map()
+      for (const x of gas.filter((g) => g.proveedor_id)) {
+        if (!m.has(x.proveedor_id)) m.set(x.proveedor_id, { id: x.proveedor_id, nombre: x.proveedor, cif: x.cif_nie || '', n: 0, total: 0, gastos: [] })
+        const p = m.get(x.proveedor_id); p.n += 1; p.total += Number(x.monto); p.gastos.push(x)
+      }
+      setFilas([...m.values()].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setError('')
+    }).catch((e) => setError(mensajeError(e)))
+  }, [f.desde, f.hasta])
+
+  const visibles = (filas || []).filter((p) => !f.texto.trim() || `${p.nombre} ${p.cif}`.toLowerCase().includes(f.texto.trim().toLowerCase()))
+  const [ordenadas, th] = useOrden(visibles)
+
+  function abrir(p) {
+    const gastos = [...p.gastos].sort((a, b) => a.fecha.localeCompare(b.fecha))
+    const porSub = new Map()
+    for (const g of gastos) {
+      const k = `${g.nro_cuenta} · ${g.ministerio} → ${g.nro_subcuenta} · ${g.subcuenta}`
+      porSub.set(k, (porSub.get(k) || 0) + Number(g.monto))
+    }
+    setModelo({
+      titulo: 'Reporte individual de proveedor', hoja: 'Proveedor',
+      archivo: nombreReporte(`Proveedor - ${p.nombre}`, f.desde, f.hasta),
+      meta: [['Proveedor', p.nombre], ['CIF/NIE', p.cif || '—'], ['Periodo', `${fmtFecha(f.desde)} – ${fmtFecha(f.hasta)}`]],
+      tablas: [
+        {
+          columnas: [{ t: 'Fecha', ancho: 11 }, { t: 'Factura', ancho: 14 }, { t: 'Cuenta / subcuenta', ancho: 34 }, { t: 'Concepto', ancho: 34 },
+            { t: 'Modalidad', ancho: 10 }, { t: 'Importe', tipo: 'dinero' }],
+          filas: [
+            ...gastos.map((g) => ({ celdas: [fmtFecha(g.fecha), g.factura || '', `${g.nro_subcuenta} · ${g.subcuenta}`, g.concepto || '', g.modalidad, r2(Number(g.monto))] })),
+            { celdas: [`Total (${gastos.length} ${gastos.length === 1 ? 'gasto' : 'gastos'})`, '', '', '', '', r2(p.total)], tipo: 'total' },
+          ],
+        },
+        {
+          subtitulo: 'Resumen por cuenta y subcuenta', estrecha: true,
+          columnas: [{ t: 'Cuenta → subcuenta', ancho: 46 }, { t: 'Importe', tipo: 'dinero' }],
+          filas: [...[...porSub.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ celdas: [k, r2(v)] }))],
+        },
+      ],
+    })
+  }
+
+  return (
+    <div className="flex-resto">
+      <div className="filtros">
+        <Campo etiqueta="Desde"><input type="date" value={f.desde} onChange={(e) => setF({ ...f, desde: e.target.value })} /></Campo>
+        <Campo etiqueta="Hasta"><input type="date" value={f.hasta} onChange={(e) => setF({ ...f, hasta: e.target.value })} /></Campo>
+        <Campo etiqueta="Buscar"><input value={f.texto} onChange={(e) => setF({ ...f, texto: e.target.value })} placeholder="Proveedor o CIF/NIE…" /></Campo>
+      </div>
+      <Aviso>{f.desde > f.hasta ? 'La fecha «desde» no puede ser posterior a «hasta».' : error}</Aviso>
+      <p className="tenue nota">Proveedores con gastos en el periodo. Pulsa uno para ver su reporte con el detalle y las cuentas relacionadas.</p>
+      {!filas ? <Cargando /> : (
+        <div className="tabla-envoltura">
+          <table className="tabla">
+            <thead><tr>{th('cif', 'CIF/NIE')}{th('nombre', 'Proveedor')}{th('n', 'Gastos', 'num')}{th('total', 'Total', 'num')}<th /></tr></thead>
+            <tbody>
+              {ordenadas.length === 0 && <tr><td colSpan="5" className="tenue">No hay gastos con proveedor en este periodo.</td></tr>}
+              {ordenadas.map((p) => (
+                <tr key={p.id} className="clic" onClick={() => abrir(p)}>
+                  <td>{p.cif}</td><td>{p.nombre}</td><td className="num">{p.n}</td><td className="num">{dinero(p.total)}</td>
+                  <td className="acciones"><span className="enlace">Ver reporte ›</span></td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><td colSpan="3">{ordenadas.length} proveedores</td><td className="num">{dinero(suma(ordenadas.map((p) => p.total)))}</td><td /></tr></tfoot>
+          </table>
+        </div>
+      )}
+      {modelo && (
+        <VistaDocumento titulo={modelo.titulo} archivo={modelo.archivo} listo onCerrar={() => setModelo(null)} onExcel={() => exportarExcel(modelo, config)}>
+          <Documento config={config} titulo={modelo.titulo} meta={modelo.meta}>
+            <TablasModelo modelo={modelo} />
+            <Firmas firmantes={[{ nombre: config?.tesorero_nombre, rol: 'Tesorero(a)' }]} />
+          </Documento>
+        </VistaDocumento>
+      )}
+    </div>
   )
 }
 
 // ---------- Presupuesto anual ----------
 export function PresupuestoAnual({ config }) {
-  const [anio, setAnio] = useState(ANIO)
+  const cuentas = useCatalogo('cuentas', 'id,nro,ministerio', 'nro')
+  const subcuentas = useCatalogo('subcuentas', 'id,nro,nombre,cuenta_id', 'nro')
+  const [f, setF] = useState({ anio: ANIO, cuentas: [], subcuentas: [] })
+  const anio = f.anio
 
   async function construir() {
     const [{ data: pres, error }, gas] = await Promise.all([
@@ -333,13 +474,17 @@ export function PresupuestoAnual({ config }) {
     }
     for (const p of pres || []) fila(p).pre += Number(p.monto)
     for (const g of gas) fila(g).meses[g.mes - 1] += Number(g.monto)
-    const filas = [...m.values()].sort((a, b) => a.cta - b.cta || a.sub - b.sub)
+    const ctasSel = cuentas.filter((c) => f.cuentas.includes(c.id)).map((c) => c.nro)
+    const subSel = subcuentas.filter((x) => f.subcuentas.includes(x.id)).map((x) => x.nro)
+    const filas = [...m.values()]
+      .filter((x) => (!ctasSel.length || ctasSel.includes(x.cta)) && (!subSel.length || subSel.includes(x.sub)))
+      .sort((a, b) => a.cta - b.cta || a.sub - b.sub)
     const totMes = MESES.map((_, i) => suma(filas.map((x) => x.meses[i])))
     const totG = suma(totMes), totP = suma(filas.map((x) => x.pre))
     return {
       titulo: 'Presupuesto anual', hoja: `Presupuesto ${anio}`, horizontal: true, compacto: true,
       archivo: nombreReporte(`Presupuesto ${anio}`),
-      meta: [['Año', String(anio)]],
+      meta: [['Año', String(anio)], ...(ctasSel.length ? [['Cuentas', ctasSel.join(', ')]] : []), ...(subSel.length ? [['Subcuentas', subSel.join(', ')]] : [])],
       tablas: [{
         columnas: [{ t: 'Cta', ancho: 6 }, { t: 'Ministerio', ancho: 26 }, { t: 'Subcta', ancho: 7 }, { t: 'Subcuenta', ancho: 30 },
           ...MESES.map((n) => ({ t: n, tipo: 'dinero', ancho: 11 })),
@@ -358,7 +503,15 @@ export function PresupuestoAnual({ config }) {
 
   return (
     <SeccionReporte construir={construir} config={config} nota="Saldo = presupuesto − gastos. Un saldo negativo indica que se superó lo presupuestado.">
-      <SelectorAnio valor={anio} onCambio={setAnio} />
+      <SelectorAnio valor={anio} onCambio={(v) => setF({ ...f, anio: v })} />
+      <Campo etiqueta="Cuentas">
+        <MultiSelect opciones={cuentas.map((c) => ({ id: c.id, etiqueta: `${c.nro} · ${c.ministerio}` }))} seleccion={f.cuentas}
+          onCambio={(v) => setF({ ...f, cuentas: v, subcuentas: [] })} etiquetaTodas="Todas" />
+      </Campo>
+      <Campo etiqueta="Subcuentas">
+        <MultiSelect opciones={subcuentas.filter((x) => !f.cuentas.length || f.cuentas.includes(x.cuenta_id)).map((x) => ({ id: x.id, etiqueta: `${x.nro} · ${x.nombre}` }))}
+          seleccion={f.subcuentas} onCambio={(v) => setF({ ...f, subcuentas: v })} etiquetaTodas="Todas" />
+      </Campo>
     </SeccionReporte>
   )
 }

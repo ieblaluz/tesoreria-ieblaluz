@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, dinero, hoy, aNumero, mensajeError } from '../supabase'
-import { Aviso } from '../components/ui'
+import { Aviso, Campo, Modal } from '../components/ui'
+import useConfirmar from '../components/Confirmar'
+import Icono from '../components/Iconos'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import ReporteCulto from '../components/ReporteCulto'
@@ -141,12 +143,37 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     cargar()
   }
 
-  async function borrar(l) {
-    if (!confirm(`¿Borrar ${dinero(l.monto)} de ${l.hermano_nombre}?`)) return
-    const { data, error } = await supabase.from('ingresos').delete().eq('id', l.id).select('id')
+  // ---- Corregir una línea: ventana con el detalle y confirmación destacada ----
+  const [confirmar, dialogo] = useConfirmar()
+  const [linea, setLinea] = useState(null)
+  const puedeCorregir = (l) => puede('ingresos_editar') || (l.creado_por === perfil.id
+    && new Date(l.creado_en).toLocaleDateString('sv-SE') === hoy() && (config?.contador_borra_mismo_dia ?? true))
+  const abrirLinea = (l) => setLinea({ ...l, monto: String(l.monto).replace('.', ','), comentario: l.comentario || '' })
+
+  async function guardarLinea() {
+    const m = aNumero(linea.monto)
+    if (!linea.hermano_id || !linea.grupo_id || !(m > 0)) return setMsg({ t: 'error', m: 'Revisa el sobre, el grupo y el monto.' })
+    const h = hermanos.find((x) => x.id === linea.hermano_id)
+    const ok = await confirmar({ titulo: '¿Guardar los cambios?', textoSi: 'Sí, guardar',
+      mensaje: <>Se modificará el ingreso del sobre <b>{h?.nro_sobre}</b> por <b>{dinero(m)}</b>.</> })
+    if (!ok) return
+    const { data, error } = await supabase.from('ingresos').update({
+      hermano_id: linea.hermano_id, grupo_id: linea.grupo_id, medio: linea.medio,
+      monto: Math.round(m * 100) / 100, comentario: linea.comentario.trim() || null,
+    }).eq('id', linea.id).select('id')
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
-    if (!data?.length) return setMsg({ t: 'error', m: 'No puedes borrar esta línea. Pide al tesorero que la corrija.' })
-    cargar()
+    if (!data?.length) return setMsg({ t: 'error', m: 'No tienes permiso para modificar esta línea. Pide al tesorero que la corrija.' })
+    setLinea(null); setMsg({ t: 'ok', m: 'Ingreso corregido.' }); cargar()
+  }
+
+  async function borrarLinea() {
+    const ok = await confirmar({ titulo: '¿Eliminar este ingreso?', textoSi: 'Sí, eliminar', peligro: true,
+      mensaje: <>Vas a eliminar <b>{dinero(linea.monto && aNumero(linea.monto))}</b> del sobre <b>{linea.nro_sobre} · {linea.hermano_nombre}</b>. Esta acción no se puede deshacer.</> })
+    if (!ok) return
+    const { data, error } = await supabase.from('ingresos').delete().eq('id', linea.id).select('id')
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    if (!data?.length) return setMsg({ t: 'error', m: 'No tienes permiso para eliminar esta línea. Pide al tesorero que la corrija.' })
+    setLinea(null); setMsg({ t: 'ok', m: 'Ingreso eliminado.' }); cargar()
   }
 
   const total = lineas.reduce((s, l) => s + Number(l.monto), 0)
@@ -273,7 +300,9 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
                 <span className="t-sobre">{l.nro_sobre}</span>
                 <span className="t-nombre">{l.hermano_nombre} {l.hermano_apellidos}<small>{l.grupo} · {l.medio}</small></span>
                 <span className="t-monto">{dinero(l.monto)}</span>
-                <button className="btn-icono" onClick={() => borrar(l)} aria-label="Borrar línea">✕</button>
+                {puedeCorregir(l)
+                  ? <button className="btn-icono" onClick={() => abrirLinea(l)} aria-label="Ver o corregir" title="Ver o corregir"><Icono nombre="editar" tam={18} /></button>
+                  : <span />}
               </li>
             ))}
           </ol>
@@ -295,6 +324,36 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
             }
           }} />
       )}
+      {linea && (
+        <Modal titulo="Detalle del ingreso" onCerrar={() => setLinea(null)}>
+          <form className="formulario" onSubmit={(e) => { e.preventDefault(); guardarLinea() }}>
+            <p className="tenue campo-completo modal-ayuda">{linea.fecha.split('-').reverse().join('/')} · {linea.turno}</p>
+            <Campo etiqueta="Nº de sobre" ancho="completo">
+              <Combobox required valor={linea.hermano_id} onCambio={(v) => setLinea((p) => ({ ...p, hermano_id: v }))}
+                opciones={hermanos.map((h) => ({ id: h.id, etiqueta: `${h.nro_sobre} · ${nombreH(h)}` }))} />
+            </Campo>
+            <Campo etiqueta="Grupo" ancho="completo">
+              <Combobox required valor={linea.grupo_id} onCambio={(v) => setLinea((p) => ({ ...p, grupo_id: v }))}
+                opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} />
+            </Campo>
+            <div className="campo">
+              <span className="campo-etiqueta">Medio</span>
+              <div className="segmentos">
+                {['Efectivo', 'Banco'].map((t) => <button key={t} type="button" className={linea.medio === t ? 'sel' : ''} onClick={() => setLinea({ ...linea, medio: t })}>{t}</button>)}
+              </div>
+            </div>
+            <Campo etiqueta="Monto"><input className="monto-grande" inputMode="decimal" required value={linea.monto} onChange={(e) => setLinea({ ...linea, monto: e.target.value })} /></Campo>
+            <Campo etiqueta="Comentario" ancho="completo"><input value={linea.comentario} onChange={(e) => setLinea({ ...linea, comentario: e.target.value })} /></Campo>
+            <div className="botonera">
+              <button type="button" className="btn btn-peligro" onClick={borrarLinea}>Eliminar</button>
+              <span className="espacio" />
+              <button type="button" className="btn btn-suave" autoFocus onClick={() => setLinea(null)}>Cancelar</button>
+              <button className="btn btn-primario">Guardar</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {dialogo}
     </section>
   )
 }

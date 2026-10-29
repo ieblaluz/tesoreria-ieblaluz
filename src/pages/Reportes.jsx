@@ -1,6 +1,6 @@
 import Tablon from './Tablon'
 import Recibos from './Recibos'
-import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, PresupuestoAnual } from './ReportesFinancieros'
+import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, ReporteProveedor, PresupuestoAnual } from './ReportesFinancieros'
 
 // Catálogo de reportes. Para añadir uno nuevo basta con sumarlo a esta lista.
 const SECCIONES = [
@@ -18,6 +18,8 @@ const SECCIONES = [
     descripcion: 'Total aportado por cada hermano en cada uno de los tres últimos años, con DNI/NIE.' },
   { id: 'proveedores', titulo: 'Proveedores trimestral', icono: '▨', permiso: 'reportes', C: ProveedoresTrimestral,
     descripcion: 'Gastos por proveedor en cada trimestre del año.' },
+  { id: 'proveedor', titulo: 'Reporte individual de proveedor', icono: '▣', permiso: 'reportes', C: ReporteProveedor,
+    descripcion: 'Gastos de un proveedor en un periodo, con las cuentas y subcuentas a las que se imputaron.' },
   { id: 'presupuesto', titulo: 'Presupuesto anual', icono: '◫', permiso: 'reportes', C: PresupuestoAnual,
     descripcion: 'Gastos de cada subcuenta por mes frente a lo presupuestado, con su saldo.' },
 ]
