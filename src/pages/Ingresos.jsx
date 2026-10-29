@@ -5,6 +5,7 @@ import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import { AnalisisIngresos } from '../components/Analisis'
 import useOrden from '../components/useOrden'
+import useConfirmar from '../components/Confirmar'
 
 const turnoActual = () => (new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
 const vacio = () => ({ fecha: hoy(), turno: turnoActual(), medio: 'Banco', hermano_id: '', grupo_id: '', pagador_id: '', monto: '', comentario: '' })
@@ -12,6 +13,7 @@ const vacio = () => ({ fecha: hoy(), turno: turnoActual(), medio: 'Banco', herma
 export default function Ingresos({ config, puede }) {
   const editable = puede('ingresos_editar')
   const [alta, setAlta] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
   const altaPermitida = puede('catalogos')
   const [vista, setVista] = useState('registros')
   const [hermanos, setHermanos] = useState([])
@@ -75,6 +77,9 @@ export default function Ingresos({ config, puede }) {
       hermano_id: editando.hermano_id, grupo_id: editando.grupo_id, pagador_id: editando.pagador_id || null,
       monto: Math.round(m * 100) / 100, comentario: editando.comentario?.trim() || null,
     }
+    const h = hermanos.find((x) => x.id === datos.hermano_id)
+    if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : '¿Registrar este ingreso?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
+      mensaje: <>{editando.id ? 'Se modificará' : 'Se registrará'} el ingreso del sobre <b>{h?.nro_sobre} · {h?.nombre}</b> por <b>{dinero(datos.monto)}</b> ({datos.medio}, {fmtFecha(datos.fecha)}).</> })) return
     const { error } = editando.id
       ? await supabase.from('ingresos').update(datos).eq('id', editando.id)
       : await supabase.from('ingresos').insert(datos)
@@ -83,7 +88,8 @@ export default function Ingresos({ config, puede }) {
   }
 
   async function borrar(x) {
-    if (!confirm(`¿Borrar el ingreso de ${dinero(x.monto)} del ${fmtFecha(x.fecha)}?`)) return
+    if (!await confirmar({ titulo: '¿Eliminar este ingreso?', textoSi: 'Sí, eliminar', peligro: true,
+      mensaje: <>Vas a eliminar <b>{dinero(aNumero(x.monto))}</b> del sobre <b>{x.nro_sobre} · {x.hermano_nombre}</b> del {fmtFecha(x.fecha)}. Esta acción no se puede deshacer.</> })) return
     const { error } = await supabase.from('ingresos').delete().eq('id', x.id)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
@@ -190,7 +196,7 @@ export default function Ingresos({ config, puede }) {
             <div className="botonera">
               {editando.id && <button type="button" className="btn btn-peligro" onClick={() => borrar(editando)}>Borrar</button>}
               <span className="espacio" />
-              <button type="button" className="btn btn-suave" onClick={() => setEditando(null)}>Cancelar</button>
+              <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar ingreso</button>
             </div>
           </form>
@@ -205,6 +211,7 @@ export default function Ingresos({ config, puede }) {
             else { setGrupos((l) => [...l, conActivo]); setEditando((p) => ({ ...p, grupo_id: fila.id })) }
           }} />
       )}
+      {dialogo}
     </section>
   )
 }

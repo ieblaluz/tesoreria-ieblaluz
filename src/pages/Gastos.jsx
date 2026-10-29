@@ -5,12 +5,14 @@ import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import useOrden from '../components/useOrden'
 import { AnalisisGastos } from '../components/Analisis'
+import useConfirmar from '../components/Confirmar'
 
 const vacio = () => ({ fecha: hoy(), cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
   modalidad: 'Banco', monto: '', autorizador_id: '', comentario: '' })
 
 export default function Gastos({ config, puede }) {
   const [alta, setAlta] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
   const altaPermitida = puede('catalogos')
   const nuevoEn = (catalogo, extra) => (altaPermitida ? (texto) => setAlta({ catalogo, texto, extra }) : undefined)
   const [vista, setVista] = useState('registros')
@@ -94,6 +96,9 @@ export default function Gastos({ config, puede }) {
       factura: editando.factura.trim() || null, concepto: editando.concepto.trim(), modalidad: editando.modalidad,
       monto: Math.round(m * 100) / 100, autorizador_id: editando.autorizador_id, comentario: editando.comentario.trim() || null,
     }
+    const sub = subcuentas.find((x) => x.id === datos.subcuenta_id)
+    if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : '¿Registrar este gasto?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
+      mensaje: <><b>{dinero(datos.monto)}</b> en <b>{sub?.nro} · {sub?.nombre}</b>: {datos.concepto} ({datos.modalidad}, {fmtFecha(datos.fecha)}).</> })) return
     const { error } = editando.id
       ? await supabase.from('gastos').update(datos).eq('id', editando.id)
       : await supabase.from('gastos').insert(datos)
@@ -102,7 +107,8 @@ export default function Gastos({ config, puede }) {
   }
 
   async function borrar() {
-    if (!confirm('¿Borrar este gasto?')) return
+    if (!await confirmar({ titulo: '¿Eliminar este gasto?', textoSi: 'Sí, eliminar', peligro: true,
+      mensaje: <>Vas a eliminar el gasto <b>{editando.concepto}</b> de <b>{dinero(aNumero(editando.monto))}</b>. Esta acción no se puede deshacer.</> })) return
     const { error } = await supabase.from('gastos').delete().eq('id', editando.id)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
@@ -208,7 +214,7 @@ export default function Gastos({ config, puede }) {
             <div className="botonera">
               {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Borrar</button>}
               <span className="espacio" />
-              <button type="button" className="btn btn-suave" onClick={() => setEditando(null)}>Cancelar</button>
+              <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar gasto</button>
             </div>
           </form>
@@ -227,6 +233,7 @@ export default function Gastos({ config, puede }) {
             if (alta.catalogo === 'autorizadores') { setAutorizadores((l) => [...l, f].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setV('autorizador_id')(fila.id) }
           }} />
       )}
+      {dialogo}
     </section>
   )
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import useOrden from '../components/useOrden'
+import useConfirmar from '../components/Confirmar'
 
 // Definición de cada catálogo: campos del formulario y columnas visibles
 export const CATALOGOS = [
@@ -70,6 +71,7 @@ function Catalogo({ def }) {
   const [texto, setTexto] = useState('')
   const [verInactivos, setVerInactivos] = useState(false)
   const [editando, setEditando] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
   const [msg, setMsg] = useState(null)
 
   const cargar = useCallback(async () => {
@@ -101,6 +103,9 @@ function Catalogo({ def }) {
   }, [filas, texto, verInactivos, refs]) // eslint-disable-line
 
   async function alternarActivo(f) {
+    const nombre = def.columnas.slice(0, 2).map((k) => mostrar(f, k)).join(' · ')
+    if (!await confirmar({ titulo: f.activo ? `¿Desactivar ${def.singular}?` : `¿Activar ${def.singular}?`, textoSi: f.activo ? 'Sí, desactivar' : 'Sí, activar', peligro: f.activo,
+      mensaje: f.activo ? <><b>{nombre}</b> dejará de aparecer en las listas. Sus movimientos se conservan.</> : <><b>{nombre}</b> volverá a aparecer en las listas.</> })) return
     const { error } = await supabase.from(def.id).update({ activo: !f.activo }).eq('id', f.id)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     cargar()
@@ -141,6 +146,7 @@ function Catalogo({ def }) {
           onCerrar={() => setEditando(null)}
           onGuardado={(m) => { setEditando(null); setMsg({ t: 'ok', m }); cargar() }} />
       )}
+      {dialogo}
     </div>
   )
 }
@@ -154,6 +160,7 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
   })
   const [error, setError] = useState('')
   const [avisoNro, setAvisoNro] = useState('')
+  const [confirmarF, dialogoF] = useConfirmar()
   const [guardando, setGuardando] = useState(false)
   // Si el número viene ya escrito (p. ej. desde "Añadir nuevo"), no se sustituye por el sugerido
   const nroTocado = useRef(!!(def.numero && inicial[def.numero.campo] !== undefined && inicial[def.numero.campo] !== ''))
@@ -199,6 +206,8 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
       }
       datos[c.k] = v === '' ? null : v
     }
+    if (!await confirmarF({ titulo: nuevo ? `¿Crear ${def.singular}?` : '¿Guardar los cambios?', textoSi: nuevo ? 'Sí, crear' : 'Sí, guardar',
+      mensaje: <>{nuevo ? 'Se creará' : 'Se modificará'}: <b>{def.campos.filter((c) => c.req).map((c) => datos[c.k]).join(' · ')}</b></> })) return
     setGuardando(true)
     const { data: fila, error: er } = nuevo
       ? await supabase.from(def.id).insert(datos).select().single()
@@ -209,7 +218,8 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
   }
 
   async function eliminar() {
-    if (!confirm(`¿Eliminar este ${def.singular}? Si tiene movimientos, no se podrá; desactívalo en su lugar.`)) return
+    if (!await confirmarF({ titulo: `¿Eliminar ${def.singular}?`, textoSi: 'Sí, eliminar', peligro: true,
+      mensaje: <>Se eliminará definitivamente. Si tiene movimientos asociados no se podrá; en ese caso, desactívalo.</> })) return
     const { error: er } = await supabase.from(def.id).delete().eq('id', inicial.id)
     if (er) return setError(mensajeError(er))
     onGuardado('Eliminado.')
@@ -249,10 +259,11 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
         <div className="botonera">
           {!nuevo && <button type="button" className="btn btn-peligro" onClick={eliminar}>Eliminar</button>}
           <span className="espacio" />
-          <button type="button" className="btn btn-suave" onClick={onCerrar}>Cancelar</button>
+          <button type="button" className="btn btn-suave" autoFocus={!nuevo} onClick={onCerrar}>Cancelar</button>
           <button className="btn btn-primario" disabled={guardando || !!avisoNro}>Guardar</button>
         </div>
       </form>
+      {dialogoF}
     </Modal>
   )
 }

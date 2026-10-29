@@ -30,7 +30,8 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   const [reporte, setReporte] = useState(false)
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
-  const [fecha, setFecha] = useState(hoy())
+  // La caja solo trabaja con el día de hoy; los días anteriores se consultan en Ingresos
+  const fecha = hoy()
   const [turno, setTurno] = useState(new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
   const [grupoId, setGrupoId] = useState('')
   const [medio, setMedio] = useState('Efectivo')
@@ -155,7 +156,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   }
 
   async function quitarDelTablon(c) {
-    if (!confirm(`¿Quitar a ${nombreContador(c)} de este culto?`)) return
+    if (!await confirmar({ titulo: '¿Quitar del tablón?', textoSi: 'Sí, quitar', peligro: true, mensaje: <>Se quitará a <b>{nombreContador(c)}</b> de las personas que contaron este culto.</> })) return
     if (c.pendiente) { await quitarDeCola(c.id); return cargar() }
     if (!leerEstado().online) return setMsg({ t: 'error', m: 'Sin conexión: para quitar a alguien ya enviado hace falta internet.' })
     const { data, error } = await supabase.from('tablon_semanal').delete().eq('id', c.id).select('id')
@@ -268,10 +269,10 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
       <h1>Registrar ingresos</h1>
 
       <div className="caja-culto">
-        <label className="campo">
+        <div className="campo">
           <span className="campo-etiqueta">Fecha</span>
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-        </label>
+          <div className="fecha-fija" title="La caja registra solo el día de hoy. Para otros días usa Ingresos.">{fecha.split('-').reverse().join('/')}</div>
+        </div>
         <div className="campo">
           <span className="campo-etiqueta">Turno</span>
           <div className="segmentos">

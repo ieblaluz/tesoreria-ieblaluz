@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, dinero, hoy, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import useOrden from '../components/useOrden'
+import useConfirmar from '../components/Confirmar'
 
 const inicioAnio = () => `${new Date().getFullYear()}-01-01`
 const vacio = () => ({ fecha: hoy(), tipo: 'Depósito', monto: '', referencia: '', concepto: '' })
@@ -13,6 +14,7 @@ export default function Movimientos() {
   const [saldos, setSaldos] = useState(null)
   const [editando, setEditando] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
 
   const cargar = useCallback(async () => {
     try {
@@ -34,6 +36,8 @@ export default function Movimientos() {
     if (!(m > 0)) return setMsg({ t: 'error', m: 'El monto debe ser mayor que cero.' })
     const datos = { fecha: editando.fecha, tipo: editando.tipo, monto: Math.round(m * 100) / 100,
       referencia: editando.referencia.trim() || null, concepto: editando.concepto.trim() || null }
+    if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : `¿Registrar este ${datos.tipo.toLowerCase()}?`, textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
+      mensaje: <><b>{datos.tipo === 'Depósito' ? 'Efectivo → Banco' : 'Banco → Efectivo'}</b> por <b>{dinero(datos.monto)}</b> el {fmtFecha(datos.fecha)}{datos.referencia ? ` (ref. ${datos.referencia})` : ''}.</> })) return
     const { error } = editando.id
       ? await supabase.from('movimientos_caja').update(datos).eq('id', editando.id)
       : await supabase.from('movimientos_caja').insert(datos)
@@ -42,7 +46,8 @@ export default function Movimientos() {
   }
 
   async function borrar() {
-    if (!confirm(`¿Borrar este ${editando.tipo.toLowerCase()}?`)) return
+    if (!await confirmar({ titulo: `¿Eliminar este ${editando.tipo.toLowerCase()}?`, textoSi: 'Sí, eliminar', peligro: true,
+      mensaje: <>Vas a eliminar un {editando.tipo.toLowerCase()} de <b>{dinero(aNumero(editando.monto))}</b> del {fmtFecha(editando.fecha)}. Los saldos de efectivo y banco cambiarán.</> })) return
     const { error } = await supabase.from('movimientos_caja').delete().eq('id', editando.id)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
@@ -115,12 +120,13 @@ export default function Movimientos() {
             <div className="botonera">
               {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Borrar</button>}
               <span className="espacio" />
-              <button type="button" className="btn btn-suave" onClick={() => setEditando(null)}>Cancelar</button>
+              <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar</button>
             </div>
           </form>
         </Modal>
       )}
+      {dialogo}
     </section>
   )
 }

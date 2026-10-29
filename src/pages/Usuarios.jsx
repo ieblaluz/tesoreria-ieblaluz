@@ -3,6 +3,7 @@ import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import RolesPermisos from '../components/RolesPermisos'
 import useOrden from '../components/useOrden'
+import useConfirmar from '../components/Confirmar'
 
 async function api(cuerpo) {
   const { data: { session } } = await supabase.auth.getSession()
@@ -18,6 +19,7 @@ async function api(cuerpo) {
 
 export default function Usuarios({ perfil }) {
   const [vista, setVista] = useState('usuarios')
+  const [confirmar, dialogo] = useConfirmar()
   const [roles, setRoles] = useState([])
   const [lista, setLista] = useState(null)
   const [nuevo, setNuevo] = useState(null)
@@ -40,19 +42,25 @@ export default function Usuarios({ perfil }) {
   const [ordenados, th] = useOrden(lista, { rol: (u) => roles.find((r) => r.id === u.rol)?.nombre, contador: (u) => contadores.find((c) => c.id === u.contador_id)?.nombre })
 
   async function actualizar(u, cambios) {
+    const que = 'rol' in cambios ? <>el rol de <b>{u.nombre}</b> a <b>{roles.find((r) => r.id === cambios.rol)?.nombre}</b></>
+      : 'contador_id' in cambios ? <>el contador vinculado a <b>{u.nombre}</b></>
+      : <>el permiso de historial de <b>{u.nombre}</b></>
+    if (!await confirmar({ titulo: '¿Guardar el cambio?', textoSi: 'Sí, cambiar', mensaje: <>Se cambiará {que}. Se aplicará la próxima vez que entre.</> })) return
     const { error } = await supabase.from('perfiles').update(cambios).eq('id', u.id)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     cargar()
   }
 
   async function alternarActivo(u) {
-    if (!confirm(u.activo ? `¿Desactivar a ${u.nombre}? No podrá entrar.` : `¿Reactivar a ${u.nombre}?`)) return
+    if (!await confirmar({ titulo: u.activo ? '¿Desactivar usuario?' : '¿Reactivar usuario?', textoSi: u.activo ? 'Sí, desactivar' : 'Sí, reactivar', peligro: u.activo,
+      mensaje: u.activo ? <><b>{u.nombre}</b> no podrá entrar en la app hasta que lo reactives.</> : <><b>{u.nombre}</b> podrá volver a entrar.</> })) return
     try { await api({ accion: 'activo', id: u.id, activo: !u.activo }); cargar() }
     catch (e) { setMsg({ t: 'error', m: e.message }) }
   }
 
   async function crear(e) {
     e.preventDefault()
+    if (!await confirmar({ titulo: '¿Crear usuario?', textoSi: 'Sí, crear', mensaje: <>Se creará el usuario <b>{nuevo.usuario.trim().toLowerCase()}</b> para <b>{nuevo.nombre}</b> con el rol <b>{roles.find((r) => r.id === nuevo.rol)?.nombre}</b>.</> })) return
     try {
       await api({ accion: 'crear', ...nuevo })
       setMsg({ t: 'ok', m: `Usuario "${nuevo.usuario.trim().toLowerCase()}" creado. Pásale su usuario y clave.` })
@@ -62,6 +70,7 @@ export default function Usuarios({ perfil }) {
 
   async function cambiarClave(e) {
     e.preventDefault()
+    if (!await confirmar({ titulo: '¿Restablecer la clave?', textoSi: 'Sí, restablecer', peligro: true, mensaje: <><b>{clave.nombre}</b> tendrá que entrar con la clave nueva. Comunícasela en persona.</> })) return
     try {
       await api({ accion: 'clave', id: clave.id, clave: clave.clave })
       setMsg({ t: 'ok', m: `Clave de ${clave.nombre} restablecida.` }); setClave(null)
@@ -170,6 +179,7 @@ export default function Usuarios({ perfil }) {
           </form>
         </Modal>
       )}
+      {dialogo}
     </section>
   )
 }
