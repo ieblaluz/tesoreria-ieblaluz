@@ -2,6 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, setMoneda } from './supabase'
 import { Cargando } from './components/ui'
 import Icono from './components/Iconos'
+import EstadoConexion from './components/EstadoConexion'
+import { iniciarSincronizacion } from './cola'
 import Login from './pages/Login'
 const Inicio = lazy(() => import('./pages/Inicio'))
 const Caja = lazy(() => import('./pages/Caja'))
@@ -17,6 +19,22 @@ const Reportes = lazy(() => import('./pages/Reportes'))
 const Movimientos = lazy(() => import('./pages/Movimientos'))
 
 // permiso: módulo de permisos necesario ('admin' = solo administrador; null = todos)
+// Descarga de antemano todas las pantallas para que también abran sin conexión
+const PRECARGAR = [
+  () => import('./pages/Inicio'),
+  () => import('./pages/Caja'),
+  () => import('./pages/Resumen'),
+  () => import('./pages/Ingresos'),
+  () => import('./pages/Gastos'),
+  () => import('./pages/Presupuesto'),
+  () => import('./pages/Catalogos'),
+  () => import('./pages/Usuarios'),
+  () => import('./pages/Configuracion'),
+  () => import('./pages/Perfil'),
+  () => import('./pages/Reportes'),
+  () => import('./pages/Movimientos'),
+]
+
 // barra: aparece en la barra superior y en las pestañas del móvil · cuenta: en el menú de usuario
 const MENU = [
   { id: 'inicio', label: 'Inicio', icono: 'inicio', permiso: null, C: Inicio, barra: true },
@@ -77,6 +95,9 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [cargarConfig])
 
+  // Sin conexión: envío automático de lo pendiente
+  useEffect(() => { iniciarSincronizacion() }, [])
+
   // Botón "atrás" del navegador o del móvil: vuelve a la pantalla anterior
   useEffect(() => {
     const alVolver = () => { setRuta(leerRuta()); setMasAbierto(false); setUsuarioAbierto(false) }
@@ -102,6 +123,13 @@ export default function App() {
         return
       }
       setPerfil(data)
+      // Con conexión, deja preparadas las pantallas y los datos de la caja para poder usarlas sin internet
+      if (navigator.onLine) {
+        setTimeout(() => {
+          PRECARGAR.forEach((cargar) => cargar().catch(() => {}))
+          import('./pages/Caja').then((m) => m.precargarDatosCaja?.()).catch(() => {})
+        }, 1500)
+      }
       supabase.from('roles').select('*').eq('id', data.rol).maybeSingle().then(({ data: r }) => setRol(r || { id: data.rol, nombre: data.rol }))
       supabase.from('permisos').select('modulo').eq('rol_id', data.rol).then(({ data: p }) => setPermisos((p || []).map((x) => x.modulo)))
     })
@@ -168,6 +196,7 @@ export default function App() {
         <span className="titulo-movil">{actual.id === 'inicio' ? (config?.nombre_app || 'Tesorería') : actual.label}</span>
       </header>
 
+      <EstadoConexion />
       <main className="contenido">
         <Suspense fallback={<Cargando />}>
           <Pagina perfil={perfil} config={config} recargarConfig={cargarConfig} ir={ir} sub={ruta.sub}

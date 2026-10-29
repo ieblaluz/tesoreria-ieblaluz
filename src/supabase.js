@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import { fetchConCopia, MENSAJE_SIN_CONEXION } from './offline'
 
+// fetchConCopia guarda las lecturas en el dispositivo para poder consultarlas sin conexión
 export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_KEY
+  import.meta.env.VITE_SUPABASE_KEY,
+  { global: { fetch: fetchConCopia } }
 )
 
 // Dominio interno para usuarios sin correo real (nunca recibe correos)
@@ -54,5 +57,7 @@ export function mensajeError(e) {
   if (e.code === '23503') return 'No se puede eliminar porque tiene movimientos asociados. Desactívalo en su lugar.'
   if (e.code === '42501' || m.includes('row-level security')) return 'No tienes permiso para esta acción.'
   if (m.includes('Invalid login credentials')) return 'Usuario o clave incorrectos.'
+  if (/Sin conexión/.test(m)) return m.includes('sin datos guardados') ? 'Sin conexión y sin datos guardados para esta pantalla. Ábrela una vez con internet para poder verla después sin conexión.' : MENSAJE_SIN_CONEXION
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'No hay conexión a internet. Comprueba la red e inténtalo de nuevo.'
   return m
 }

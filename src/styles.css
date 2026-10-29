@@ -533,3 +533,17 @@ th.ordenable:hover { color: var(--primario); }
 .btn-peligro-lleno { background: var(--neg); color: #fff; }
 .btn-peligro-lleno:hover { filter: brightness(1.08); }
 @media (max-width: 700px) { .vista-barra { flex-wrap: wrap; } .vista-barra > .tenue { width: 100%; } }
+
+/* ---------- Sin conexión ---------- */
+.estado-conexion { position: sticky; top: var(--alto-barra); z-index: 35; display: flex; align-items: center; justify-content: center; gap: .75rem;
+  padding: .5rem 1rem; font-size: .88rem; text-align: center; background: #FEF3E2; color: #7A4A06; border-bottom: 1px solid #F5D9A8; }
+.estado-conexion.offline { background: #344054; color: #fff; border-bottom-color: #1D2939; }
+.estado-conexion.error { background: #FDECEA; color: #7A1A12; border-bottom-color: #F2C4C0; }
+.estado-conexion .btn-texto { color: inherit; text-decoration: underline; }
+@media (max-width: 860px) { .estado-conexion { top: calc(54px + env(safe-area-inset-top)); font-size: .8rem; } }
+.ticket-lineas li.pendiente { background: #FFFBF2; }
+.marca-pendiente { color: #B54708; font-weight: 700; }
+.marca-pendiente.con-error { color: var(--neg); }
+.chip-pendiente { outline: 2px dashed #F5B547; outline-offset: -2px; }
+.aviso-aviso { background: #FEF3E2; color: #7A4A06; }
+.zona-impresion .aviso { display: none; }
