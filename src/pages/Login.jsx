@@ -13,6 +13,7 @@ export default function Login({ config, aviso, limpiarAviso }) {
     setError(''); limpiarAviso()
     const u = usuario.trim().toLowerCase()
     if (!u || !clave) return setError('Escribe tu usuario y tu clave.')
+    if (!navigator.onLine) return setError('Sin conexión. Para iniciar sesión hace falta internet; después la app funciona aunque se pierda la conexión.')
     setEntrando(true)
     try {
       let email = u

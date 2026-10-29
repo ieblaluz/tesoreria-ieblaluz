@@ -6,9 +6,18 @@ import Icono from '../components/Iconos'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import ReporteCulto from '../components/ReporteCulto'
+import { encolar, verCola, quitarDeCola, actualizarEnCola, sincronizar } from '../cola'
+import { suscribir, leerEstado, esErrorDeRed } from '../offline'
 
 const nombreContador = (c) => c.contadores?.nombre || c.nombre_libre || ''
 const nombreH = (h) => `${h.nombre} ${h.apellidos || ''}`.trim()
+
+// Consultas que usa la caja, ejecutadas de antemano para que queden guardadas en el dispositivo
+export function precargarDatosCaja() {
+  supabase.from('hermanos').select('id,nro_sobre,nombre,apellidos').eq('activo', true).order('nro_sobre').then(() => {})
+  supabase.from('grupos_ingreso').select('id,nombre').eq('activo', true).order('nombre').then(() => {})
+  supabase.from('contadores').select('id,nombre,activo').order('nombre').then(() => {})
+}
 
 export default function Caja({ perfil, config, esTesorero, puede }) {
   const [contadores, setContadores] = useState([])
@@ -48,6 +57,19 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
       })
   }, [])
 
+  // ---- Sin conexión: lo que no se puede enviar queda en cola y se envía solo al volver internet ----
+  const [cola, setCola] = useState([])
+  const cargarCola = useCallback(async () => {
+    const todo = await verCola()
+    setCola(todo.filter((x) => x.datos.fecha === fecha && x.datos.turno === turno))
+  }, [fecha, turno])
+  async function insertarOEncolar(tabla, datos) {
+    if (!leerEstado().online) { await encolar(tabla, datos); return { encolado: true } }
+    const { error } = await supabase.from(tabla).insert(datos)
+    if (error && esErrorDeRed(error)) { await encolar(tabla, datos); return { encolado: true } }
+    return { error }
+  }
+
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.from('v_ingresos').select('*')
       .eq('fecha', fecha).eq('turno', turno).order('creado_en', { ascending: false })
@@ -58,12 +80,24 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     let { data: t } = await leerTablon()
     // El contador que entra queda anotado solo en el culto de hoy
     if (miContador && fecha === hoy() && !(t || []).some((c) => c.contador_id === miContador)) {
-      await supabase.from('tablon_semanal').insert({ fecha, turno, contador_id: miContador })
-      ;({ data: t } = await leerTablon())
+      const yaEnCola = (await verCola()).some((x) => x.tabla === 'tablon_semanal' && x.datos.fecha === fecha && x.datos.turno === turno && x.datos.contador_id === miContador)
+      if (!yaEnCola) {
+        const r = await insertarOEncolar('tablon_semanal', { fecha, turno, contador_id: miContador })
+        if (!r.encolado) ({ data: t } = await leerTablon())
+      }
     }
     setContaron(t || [])
-  }, [fecha, turno, miContador])
+    cargarCola()
+  }, [fecha, turno, miContador, cargarCola]) // eslint-disable-line
   useEffect(() => { cargar() }, [cargar])
+  // Cuando se envía lo pendiente (o cambia la conexión), se actualiza la lista
+  useEffect(() => {
+    let antes = leerEstado()
+    return suscribir((e) => {
+      if (e.pendientes !== antes.pendientes || (e.online && !antes.online)) cargar()
+      antes = e
+    })
+  }, [cargar])
 
   const sugerencias = useMemo(() => {
     const t = busca.trim().toLowerCase()
@@ -102,17 +136,19 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     if (!grupoId) return setMsg({ t: 'error', m: 'Elige el grupo de ingreso.' })
     if (!(m > 0)) return setMsg({ t: 'error', m: 'Escribe un monto mayor que cero.' })
     setGuardando(true)
-    const { error } = await supabase.from('ingresos').insert({
-      fecha, turno, medio, hermano_id: hermano.id, grupo_id: grupoId,
+    const r = await insertarOEncolar('ingresos', {
+      id: crypto.randomUUID(), fecha, turno, medio, hermano_id: hermano.id, grupo_id: grupoId,
       monto: Math.round(m * 100) / 100, comentario: comentario.trim() || null,
     })
     setGuardando(false)
-    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    if (r.error) return setMsg({ t: 'error', m: mensajeError(r.error) })
     // Deja constancia en el tablón de quién contó este culto (si ya estaba, no se repite)
-    if (miContador && !contaron.some((c) => c.contador_id === miContador)) {
-      await supabase.from('tablon_semanal').insert({ fecha, turno, contador_id: miContador })
+    if (miContador && !contaronVista.some((c) => c.contador_id === miContador)) {
+      await insertarOEncolar('tablon_semanal', { fecha, turno, contador_id: miContador })
     }
-    setMsg({ t: 'ok', m: `Registrado: ${dinero(m)} de ${nombreH(hermano)}` })
+    setMsg(r.encolado
+      ? { t: 'ok', m: `Guardado en el dispositivo: ${dinero(m)} de ${nombreH(hermano)}. Se enviará solo al volver la conexión.` }
+      : { t: 'ok', m: `Registrado: ${dinero(m)} de ${nombreH(hermano)}` })
     setBusca(''); setHermano(null); setMonto(''); setComentario('')
     refBusca.current?.focus()
     cargar()
@@ -120,12 +156,14 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
 
   async function quitarDelTablon(c) {
     if (!confirm(`¿Quitar a ${nombreContador(c)} de este culto?`)) return
+    if (c.pendiente) { await quitarDeCola(c.id); return cargar() }
+    if (!leerEstado().online) return setMsg({ t: 'error', m: 'Sin conexión: para quitar a alguien ya enviado hace falta internet.' })
     const { data, error } = await supabase.from('tablon_semanal').delete().eq('id', c.id).select('id')
     if (error || !data?.length) return setMsg({ t: 'error', m: 'No se pudo quitar. Solo puede corregirlo quien lo anotó, el mismo día.' })
     cargar()
   }
   const hoyLocal = hoy()
-  const puedeQuitar = (c) => (esTesorero || c.creado_por === perfil.id) && new Date(c.creado_en).toLocaleDateString('sv-SE') === hoyLocal
+  const puedeQuitar = (c) => c.pendiente || ((esTesorero || c.creado_por === perfil.id) && new Date(c.creado_en).toLocaleDateString('sv-SE') === hoyLocal)
 
   // Añade al tablón a un contador de la lista o, si el nombre no está en la lista, a un ayudante
   async function anotarPersona(e) {
@@ -133,11 +171,10 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     const texto = persona.trim()
     if (!texto) return
     const c = contadores.find((x) => x.nombre.toLowerCase() === texto.toLowerCase())
-    if (contaron.some((x) => nombreContador(x).toLowerCase() === texto.toLowerCase())) {
+    if (contaronVista.some((x) => nombreContador(x).toLowerCase() === texto.toLowerCase())) {
       setPersona(''); return setMsg({ t: 'error', m: `${texto} ya está anotado en este culto.` })
     }
-    const { error } = await supabase.from('tablon_semanal')
-      .insert(c ? { fecha, turno, contador_id: c.id } : { fecha, turno, nombre_libre: texto })
+    const { error } = await insertarOEncolar('tablon_semanal', c ? { fecha, turno, contador_id: c.id } : { fecha, turno, nombre_libre: texto })
     if (error) return setMsg({ t: 'error', m: error.code === '23505' ? `${texto} ya está anotado en este culto.` : mensajeError(error) })
     setPersona('')
     cargar()
@@ -146,7 +183,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   // ---- Corregir una línea: ventana con el detalle y confirmación destacada ----
   const [confirmar, dialogo] = useConfirmar()
   const [linea, setLinea] = useState(null)
-  const puedeCorregir = (l) => puede('ingresos_editar') || (l.creado_por === perfil.id
+  const puedeCorregir = (l) => l.pendiente || puede('ingresos_editar') || (l.creado_por === perfil.id
     && new Date(l.creado_en).toLocaleDateString('sv-SE') === hoy() && (config?.contador_borra_mismo_dia ?? true))
   const abrirLinea = (l) => setLinea({ ...l, monto: String(l.monto).replace('.', ','), comentario: l.comentario || '' })
 
@@ -157,6 +194,12 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     const ok = await confirmar({ titulo: '¿Guardar los cambios?', textoSi: 'Sí, guardar',
       mensaje: <>Se modificará el ingreso del sobre <b>{h?.nro_sobre}</b> por <b>{dinero(m)}</b>.</> })
     if (!ok) return
+    if (linea.pendiente) {
+      await actualizarEnCola(linea.clave, { hermano_id: linea.hermano_id, grupo_id: linea.grupo_id, medio: linea.medio,
+        monto: Math.round(m * 100) / 100, comentario: linea.comentario.trim() || null })
+      setLinea(null); setMsg({ t: 'ok', m: 'Ingreso pendiente corregido.' }); return cargarCola()
+    }
+    if (!leerEstado().online) return setMsg({ t: 'error', m: 'Sin conexión: para corregir un ingreso ya enviado hace falta internet.' })
     const { data, error } = await supabase.from('ingresos').update({
       hermano_id: linea.hermano_id, grupo_id: linea.grupo_id, medio: linea.medio,
       monto: Math.round(m * 100) / 100, comentario: linea.comentario.trim() || null,
@@ -170,15 +213,53 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     const ok = await confirmar({ titulo: '¿Eliminar este ingreso?', textoSi: 'Sí, eliminar', peligro: true,
       mensaje: <>Vas a eliminar <b>{dinero(linea.monto && aNumero(linea.monto))}</b> del sobre <b>{linea.nro_sobre} · {linea.hermano_nombre}</b>. Esta acción no se puede deshacer.</> })
     if (!ok) return
+    if (linea.pendiente) { await quitarDeCola(linea.clave); setLinea(null); setMsg({ t: 'ok', m: 'Ingreso pendiente eliminado.' }); return cargarCola() }
+    if (!leerEstado().online) return setMsg({ t: 'error', m: 'Sin conexión: para eliminar un ingreso ya enviado hace falta internet.' })
     const { data, error } = await supabase.from('ingresos').delete().eq('id', linea.id).select('id')
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     if (!data?.length) return setMsg({ t: 'error', m: 'No tienes permiso para eliminar esta línea. Pide al tesorero que la corrija.' })
     setLinea(null); setMsg({ t: 'ok', m: 'Ingreso eliminado.' }); cargar()
   }
 
-  const total = lineas.reduce((s, l) => s + Number(l.monto), 0)
-  const porMedio = (md) => lineas.filter((l) => l.medio === md).reduce((s, l) => s + Number(l.monto), 0)
-  const porGrupo = Object.entries(lineas.reduce((acc, l) => {
+  // Lo enviado + lo pendiente en el dispositivo
+  const lineasVista = [
+    ...cola.filter((x) => x.tabla === 'ingresos' && !lineas.some((l) => l.id === x.datos.id)).reverse().map((x) => {
+      const h = hermanos.find((y) => y.id === x.datos.hermano_id) || {}
+      return { ...x.datos, clave: x.clave, pendiente: true, errorEnvio: x.error, nro_sobre: h.nro_sobre, hermano_nombre: h.nombre,
+        hermano_apellidos: h.apellidos, grupo: grupos.find((g) => g.id === x.datos.grupo_id)?.nombre }
+    }),
+    ...lineas,
+  ]
+  const contaronVista = [
+    ...contaron,
+    ...cola.filter((x) => x.tabla === 'tablon_semanal').map((x) => ({
+      id: x.clave, pendiente: true, contador_id: x.datos.contador_id, nombre_libre: x.datos.nombre_libre,
+      contadores: x.datos.contador_id ? { nombre: contadores.find((c) => c.id === x.datos.contador_id)?.nombre } : null,
+    })),
+  ]
+  // Reporte calculado en el dispositivo, para cuando no hay conexión
+  async function reporteLocal() {
+    const otro = turno === 'Mañana' ? 'Tarde' : 'Mañana'
+    const { data: otras } = await supabase.from('v_ingresos').select('*').eq('fecha', fecha).eq('turno', otro).order('creado_en', { ascending: false }).then((r) => r, () => ({ data: [] }))
+    const otrasPend = (await verCola()).filter((x) => x.tabla === 'ingresos' && x.datos.fecha === fecha && x.datos.turno === otro)
+    const sumar = (arr) => arr.reduce((t, l) => t + Number(l.monto), 0)
+    const m = new Map()
+    for (const l of lineasVista) { const k = l.grupo + '|' + l.medio; m.set(k, { grupo: l.grupo, medio: l.medio, total: (m.get(k)?.total || 0) + Number(l.monto) }) }
+    const totalOtro = sumar(otras || []) + sumar(otrasPend.map((x) => x.datos))
+    return {
+      lineas: [...m.values()], efectivo: sumar(lineasVista.filter((l) => l.medio === 'Efectivo')), banco: sumar(lineasVista.filter((l) => l.medio === 'Banco')),
+      manana: turno === 'Mañana' ? sumar(lineasVista) : totalOtro, tarde: turno === 'Tarde' ? sumar(lineasVista) : totalOtro,
+      contadores: contaronVista.map(nombreContador).filter(Boolean),
+    }
+  }
+  async function abrirReporte() {
+    if (leerEstado().online && leerEstado().pendientes) await sincronizar()
+    setReporte(true)
+  }
+
+  const total = lineasVista.reduce((s, l) => s + Number(l.monto), 0)
+  const porMedio = (md) => lineasVista.filter((l) => l.medio === md).reduce((s, l) => s + Number(l.monto), 0)
+  const porGrupo = Object.entries(lineasVista.reduce((acc, l) => {
     acc[l.grupo] = (acc[l.grupo] || 0) + Number(l.monto); return acc
   }, {}))
 
@@ -209,9 +290,9 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
           <span className="campo-etiqueta">Contaron en este culto</span>
           <div className="contaron-caja">
             <span className="chips">
-              {contaron.length === 0 && <span className="tenue">Nadie anotado todavía</span>}
-              {contaron.map((c) => (
-                <span key={c.id} className={'chip' + (c.contador_id ? '' : ' chip-ayudante')} title={c.contador_id ? 'Contador' : 'Ayudante'}>
+              {contaronVista.length === 0 && <span className="tenue">Nadie anotado todavía</span>}
+              {contaronVista.map((c) => (
+                <span key={c.id} className={'chip' + (c.contador_id ? '' : ' chip-ayudante') + (c.pendiente ? ' chip-pendiente' : '')} title={c.contador_id ? 'Contador' : 'Ayudante'}>
                   {nombreContador(c)}
                   {puedeQuitar(c) && <button type="button" aria-label={`Quitar a ${nombreContador(c)}`} onClick={() => quitarDelTablon(c)}>✕</button>}
                 </span>
@@ -294,11 +375,11 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
             </ul>
           )}
           <ol className="ticket-lineas">
-            {lineas.length === 0 && <li className="tenue">Todavía no hay ingresos registrados en este culto.</li>}
-            {lineas.map((l) => (
-              <li key={l.id}>
+            {lineasVista.length === 0 && <li className="tenue">Todavía no hay ingresos registrados en este culto.</li>}
+            {lineasVista.map((l) => (
+              <li key={l.id} className={l.pendiente ? 'pendiente' : ''} title={l.pendiente ? (l.errorEnvio ? `No se pudo enviar: ${l.errorEnvio}` : 'Pendiente de enviar') : undefined}>
                 <span className="t-sobre">{l.nro_sobre}</span>
-                <span className="t-nombre">{l.hermano_nombre} {l.hermano_apellidos}<small>{l.grupo} · {l.medio}</small></span>
+                <span className="t-nombre">{l.hermano_nombre} {l.hermano_apellidos}<small>{l.grupo} · {l.medio}{l.pendiente && <b className={'marca-pendiente' + (l.errorEnvio ? ' con-error' : '')}>{l.errorEnvio ? ' · No enviado (revisar)' : ' · Pendiente de enviar'}</b>}</small></span>
                 <span className="t-monto">{dinero(l.monto)}</span>
                 {puedeCorregir(l)
                   ? <button className="btn-icono" onClick={() => abrirLinea(l)} aria-label="Ver o corregir" title="Ver o corregir"><Icono nombre="editar" tam={18} /></button>
@@ -306,8 +387,8 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
               </li>
             ))}
           </ol>
-          <button className="btn btn-suave btn-ancho ver-reporte" onClick={() => setReporte(true)}>Ver e imprimir reporte del culto</button>
-          {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} />}
+          <button className="btn btn-suave btn-ancho ver-reporte" onClick={abrirReporte}>Ver e imprimir reporte del culto</button>
+          {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} datosLocales={reporteLocal} />}
           {!puede('ingresos') && !perfil.ver_historial && (
             <p className="tenue nota">Ves solo los ingresos que has registrado tú.</p>
           )}
