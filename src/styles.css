@@ -547,3 +547,4 @@ th.ordenable:hover { color: var(--primario); }
 .chip-pendiente { outline: 2px dashed #F5B547; outline-offset: -2px; }
 .aviso-aviso { background: #FEF3E2; color: #7A4A06; }
 .zona-impresion .aviso { display: none; }
+.fecha-fija { min-height: 40px; display: flex; align-items: center; padding: 0 .7rem; border: 1px solid var(--linea); border-radius: 6px; background: #F2F4F7; font-weight: 700; }
