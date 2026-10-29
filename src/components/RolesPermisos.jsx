@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { PERMISOS } from '../permisos'
 import { Aviso, Campo, Modal } from './ui'
+import useConfirmar from './Confirmar'
 
 const slug = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
@@ -10,6 +11,7 @@ export default function RolesPermisos({ roles, recargar }) {
   const [asignados, setAsignados] = useState(new Set())
   const [editando, setEditando] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [confirmar, dialogo] = useConfirmar()
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.from('permisos').select('rol_id,modulo')
@@ -33,6 +35,7 @@ export default function RolesPermisos({ roles, recargar }) {
     const nombre = editando.nombre.trim()
     if (!nombre) return setMsg({ t: 'error', m: 'Escribe el nombre del rol.' })
     const datos = { nombre, descripcion: editando.descripcion.trim() || null }
+    if (!await confirmar({ titulo: editando.id ? '¿Guardar el rol?' : '¿Crear el rol?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, crear', mensaje: <>Rol <b>{nombre}</b>.</> })) return
     const { error } = editando.id
       ? await supabase.from('roles').update(datos).eq('id', editando.id)
       : await supabase.from('roles').insert({ ...datos, id: slug(nombre) || `rol_${Date.now()}` })
@@ -41,7 +44,7 @@ export default function RolesPermisos({ roles, recargar }) {
   }
 
   async function borrar() {
-    if (!confirm(`¿Borrar el rol «${editando.nombre}»?`)) return
+    if (!await confirmar({ titulo: '¿Borrar el rol?', textoSi: 'Sí, borrar', peligro: true, mensaje: <>Se borrará el rol <b>{editando.nombre}</b> y sus permisos.</> })) return
     const { error } = await supabase.from('roles').delete().eq('id', editando.id)
     if (error) return setMsg({ t: 'error', m: error.code === '23503' ? 'No se puede borrar: hay usuarios con este rol. Cámbiales el rol primero.' : mensajeError(error) })
     setEditando(null); recargar(); cargar()
@@ -103,6 +106,7 @@ export default function RolesPermisos({ roles, recargar }) {
           </form>
         </Modal>
       )}
+      {dialogo}
     </div>
   )
 }
