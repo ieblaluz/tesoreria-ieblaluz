@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase, DOMINIO_INTERNO, mensajeError } from '../supabase'
 import { Aviso } from '../components/ui'
+import { guardarHuella, marcarAbierta } from '../bloqueo'
 
 export default function Login({ config, aviso, limpiarAviso }) {
   const [usuario, setUsuario] = useState('')
@@ -22,8 +23,10 @@ export default function Login({ config, aviso, limpiarAviso }) {
         if (er) throw er
         email = data || `${u}@${DOMINIO_INTERNO}`
       }
-      const { error: er } = await supabase.auth.signInWithPassword({ email, password: clave })
+      const { data: ses, error: er } = await supabase.auth.signInWithPassword({ email, password: clave })
       if (er) throw er
+      marcarAbierta()
+      await guardarHuella(ses.user.id, clave)
     } catch (er) {
       setError(mensajeError(er))
     } finally {

@@ -39,6 +39,7 @@ export default function Configuracion({ config, recargarConfig }) {
     nombre_iglesia: config?.nombre_iglesia || '', nombre_app: config?.nombre_app || '',
     color_primario: config?.color_primario || '#1F3A5F', moneda: config?.moneda || 'EUR',
     contador_borra_mismo_dia: config?.contador_borra_mismo_dia ?? true,
+    minutos_bloqueo: config?.minutos_bloqueo || 30,
     tesorero_nombre: config?.tesorero_nombre || '',
     logo_reporte_alto: config?.logo_reporte_alto || 60,
     reporte_mostrar_nombre: config?.reporte_mostrar_nombre ?? true,
@@ -72,7 +73,7 @@ export default function Configuracion({ config, recargarConfig }) {
 
   async function guardar(e) {
     e?.preventDefault()
-    const datos = { ...form, logo_reporte_alto: Number(form.logo_reporte_alto), tesorero_nombre: form.tesorero_nombre.trim() || null,
+    const datos = { ...form, minutos_bloqueo: Number(form.minutos_bloqueo), logo_reporte_alto: Number(form.logo_reporte_alto), tesorero_nombre: form.tesorero_nombre.trim() || null,
       actualizado_en: new Date().toISOString() }
     const { error } = await supabase.from('configuracion').update(datos).eq('id', 1)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
@@ -257,6 +258,11 @@ export default function Configuracion({ config, recargarConfig }) {
             <input type="color" value={form.color_primario} onChange={set('color_primario')} />
             <code>{form.color_primario}</code>
           </div>
+        </Campo>
+        <Campo etiqueta="Bloquear la app tras… sin uso" ayuda="Al volver a abrir el navegador también se pide la clave.">
+          <select value={form.minutos_bloqueo} onChange={set('minutos_bloqueo')}>
+            {[5, 10, 15, 30, 60, 120].map((n) => <option key={n} value={n}>{n < 60 ? `${n} minutos` : `${n / 60} ${n === 60 ? 'hora' : 'horas'}`}</option>)}
+          </select>
         </Campo>
         <label className="check campo-completo">
           <input type="checkbox" checked={form.contador_borra_mismo_dia} onChange={set('contador_borra_mismo_dia')} />
