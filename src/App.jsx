@@ -3,6 +3,8 @@ import { supabase, setMoneda } from './supabase'
 import { Cargando } from './components/ui'
 import Icono from './components/Iconos'
 import EstadoConexion from './components/EstadoConexion'
+import Bloqueo from './components/Bloqueo'
+import { estaAbierta, marcarAbierta, marcarCerrada, borrarHuella } from './bloqueo'
 import { iniciarSincronizacion } from './cola'
 import Login from './pages/Login'
 const Inicio = lazy(() => import('./pages/Inicio'))
@@ -68,6 +70,9 @@ export default function App() {
   const [rol, setRol] = useState(null)
   const [permisos, setPermisos] = useState([])
   const refUsuario = useRef(null)
+  // Bloqueo de seguridad: null (abierta) | 'reapertura' (se cerró el navegador) | 'inactividad'
+  const [bloqueo, setBloqueo] = useState(() => (estaAbierta() ? null : 'reapertura'))
+  const ultimaActividad = useRef(Date.now())
   const hayUsuario = useRef(false)
   const irAInicio = () => { window.history.replaceState(null, '', '#inicio'); setRuta({ pagina: 'inicio', sub: null }) }
 
@@ -88,7 +93,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => { hayUsuario.current = !!data.session; setSesion(data.session) })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((evento, s) => {
       // Al iniciar sesión (no al recargar la página) siempre se empieza en Inicio
-      if (evento === 'SIGNED_IN' && !hayUsuario.current) irAInicio()
+      if (evento === 'SIGNED_IN' && !hayUsuario.current) { irAInicio(); setBloqueo(null); ultimaActividad.current = Date.now() }
       hayUsuario.current = !!s
       setSesion(s)
     })
@@ -111,6 +116,21 @@ export default function App() {
     document.addEventListener('mousedown', fuera)
     return () => document.removeEventListener('mousedown', fuera)
   }, [usuarioAbierto])
+
+  // Vigila la inactividad: tras X minutos sin tocar la app, se bloquea
+  const minutosBloqueo = config?.minutos_bloqueo || 30
+  useEffect(() => {
+    if (!sesion) return
+    const actividad = () => { ultimaActividad.current = Date.now() }
+    const comprobar = () => {
+      if (!bloqueo && Date.now() - ultimaActividad.current > minutosBloqueo * 60000) { marcarCerrada(); setBloqueo('inactividad') }
+    }
+    const eventos = ['pointerdown', 'keydown', 'wheel', 'touchstart', 'scroll']
+    eventos.forEach((ev) => window.addEventListener(ev, actividad, { passive: true }))
+    document.addEventListener('visibilitychange', comprobar)
+    const t = setInterval(comprobar, 20000)
+    return () => { eventos.forEach((ev) => window.removeEventListener(ev, actividad)); document.removeEventListener('visibilitychange', comprobar); clearInterval(t) }
+  }, [sesion, bloqueo, minutosBloqueo])
 
   const uid = sesion?.user?.id
   useEffect(() => {
@@ -161,7 +181,7 @@ export default function App() {
   // La hoja "Más" también se cierra con el botón atrás del móvil
   const abrirHoja = () => { window.history.pushState({ hoja: true }, '', window.location.href); setMasAbierto(true) }
   const cerrarHoja = () => { if (window.history.state?.hoja) window.history.back(); else setMasAbierto(false) }
-  const salir = () => { irAInicio(); setMasAbierto(false); setUsuarioAbierto(false); supabase.auth.signOut() }
+  const salir = () => { irAInicio(); setMasAbierto(false); setUsuarioAbierto(false); marcarCerrada(); borrarHuella(); setBloqueo(null); supabase.auth.signOut() }
   const logo = config?.icono_192_url || '/icon-192.png'
 
   return (
@@ -196,6 +216,10 @@ export default function App() {
         <span className="titulo-movil">{actual.id === 'inicio' ? (config?.nombre_app || 'Tesorería') : actual.label}</span>
       </header>
 
+      {bloqueo && (
+        <Bloqueo perfil={perfil} config={config} sesion={sesion} motivo={bloqueo} onSalir={salir}
+          onDesbloquear={() => { marcarAbierta(); ultimaActividad.current = Date.now(); setBloqueo(null) }} />
+      )}
       <EstadoConexion />
       <main className="contenido">
         <Suspense fallback={<Cargando />}>

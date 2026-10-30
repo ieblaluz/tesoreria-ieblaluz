@@ -552,3 +552,9 @@ th.ordenable:hover { color: var(--primario); }
   background: #fff; border: 1px solid var(--linea); border-top: 6px solid #DC8B0B; border-radius: 12px; box-shadow: 0 10px 30px rgba(16,24,40,.08); }
 .culto-cerrado h2 { margin: .2rem 0 .5rem; font-size: 1.2rem; }
 .culto-cerrado p { margin: 0 0 1rem; line-height: 1.5; }
+
+/* ---------- Bloqueo de seguridad ---------- */
+.bloqueo { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1.5rem; background: var(--primario); overflow-y: auto; }
+.bloqueo .btn-texto { justify-self: center; }
+.bloqueo-usuario { display: flex; align-items: center; gap: .7rem; padding: .6rem .8rem; background: #F6F7F9; border-radius: 10px; font-weight: 600; }
+.bloqueo-usuario small { display: block; font-weight: 400; color: var(--tenue); }
