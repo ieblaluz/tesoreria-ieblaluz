@@ -30,8 +30,17 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   const [reporte, setReporte] = useState(false)
   const [hermanos, setHermanos] = useState([])
   const [grupos, setGrupos] = useState([])
-  // La caja solo trabaja con el día de hoy; los días anteriores se consultan en Ingresos
-  const fecha = hoy()
+  // Por defecto hoy. Se puede elegir un día pasado para registrar con retraso,
+  // salvo que ese culto ya tenga ingresos de otros días (culto cerrado: se consulta en Ingresos)
+  const [fecha, setFecha] = useState(hoy())
+  const [cerrado, setCerrado] = useState(false) // false | true | 'sin-conexion'
+  useEffect(() => {
+    if (fecha >= hoy()) return setCerrado(false)
+    if (!leerEstado().online) return setCerrado('sin-conexion')
+    setCerrado(null)
+    supabase.rpc('culto_cerrado', { p_fecha: fecha, p_turno: turno })
+      .then(({ data, error }) => setCerrado(error ? 'sin-conexion' : !!data))
+  }, [fecha, turno])
   const [turno, setTurno] = useState(new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
   const [grupoId, setGrupoId] = useState('')
   const [medio, setMedio] = useState('Efectivo')
@@ -271,7 +280,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
       <div className="caja-culto">
         <div className="campo">
           <span className="campo-etiqueta">Fecha</span>
-          <div className="fecha-fija" title="La caja registra solo el día de hoy. Para otros días usa Ingresos.">{fecha.split('-').reverse().join('/')}</div>
+          <input type="date" value={fecha} max={hoy()} onChange={(e) => setFecha(e.target.value || hoy())} />
         </div>
         <div className="campo">
           <span className="campo-etiqueta">Turno</span>
@@ -289,7 +298,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
         </label>
         <div className="campo campo-contaron">
           <span className="campo-etiqueta">Contaron en este culto</span>
-          <div className="contaron-caja">
+          {cerrado !== false ? <div className="contaron-caja"><span className="tenue">—</span></div> : <div className="contaron-caja">
             <span className="chips">
               {contaronVista.length === 0 && <span className="tenue">Nadie anotado todavía</span>}
               {contaronVista.map((c) => (
@@ -307,11 +316,31 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
               </datalist>
               <button className="btn btn-suave" disabled={!persona.trim()}>+ Añadir</button>
             </form>
-          </div>
+          </div>}
           {!esTesorero && !perfil.contador_id && <span className="campo-error">Tu usuario no está vinculado a un contador. Avisa al tesorero.</span>}
         </div>
       </div>
 
+      {fecha < hoy() && cerrado === false && (
+        <Aviso tipo="aviso">Estás registrando con fecha atrasada: <b>{fecha.split('-').reverse().join('/')}</b> · {turno}. Comprueba que es la fecha correcta.</Aviso>
+      )}
+      {cerrado === null && <p className="tenue">Comprobando la fecha…</p>}
+      {(cerrado === true || cerrado === 'sin-conexion') ? (
+        <div className="culto-cerrado">
+          <span className="confirmacion-icono" aria-hidden="true">!</span>
+          <div>
+            {cerrado === true ? <>
+              <h2>Este culto ya está registrado</h2>
+              <p>El culto del <b>{fecha.split('-').reverse().join('/')}</b> ({turno.toLowerCase()}) ya tiene ingresos registrados, así que no se pueden añadir más desde la caja.
+                Para consultarlos o corregirlos, usa el módulo <b>Ingresos</b>.</p>
+            </> : <>
+              <h2>Sin conexión</h2>
+              <p>Para registrar con una fecha pasada hace falta internet, para comprobar que ese culto no esté ya registrado. Sin conexión solo se puede registrar el día de hoy.</p>
+            </>}
+            <button className="btn btn-primario" onClick={() => setFecha(hoy())}>Volver a hoy</button>
+          </div>
+        </div>
+      ) : cerrado === false && (
       <div className="caja-cuerpo">
         <form className="caja-entrada panel" onSubmit={guardar}>
           <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
@@ -395,6 +424,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
           )}
         </div>
       </div>
+      )}
       {alta && (
         <NuevoRegistro catalogo={alta.catalogo} texto={alta.texto} onCerrar={() => setAlta(null)}
           onCreado={(fila) => {
