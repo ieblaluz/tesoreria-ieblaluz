@@ -32,6 +32,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   const [grupos, setGrupos] = useState([])
   // Por defecto hoy. Se puede elegir un día pasado para registrar con retraso,
   // salvo que ese culto ya tenga ingresos de otros días (culto cerrado: se consulta en Ingresos)
+  const [turno, setTurno] = useState(new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
   const [fecha, setFecha] = useState(hoy())
   const [cerrado, setCerrado] = useState(false) // false | true | 'sin-conexion'
   useEffect(() => {
@@ -41,7 +42,6 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
     supabase.rpc('culto_cerrado', { p_fecha: fecha, p_turno: turno })
       .then(({ data, error }) => setCerrado(error ? 'sin-conexion' : !!data))
   }, [fecha, turno])
-  const [turno, setTurno] = useState(new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
   const [grupoId, setGrupoId] = useState('')
   const [medio, setMedio] = useState('Efectivo')
   const [busca, setBusca] = useState('')
