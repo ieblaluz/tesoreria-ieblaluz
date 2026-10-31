@@ -36,19 +36,20 @@ export default function Movimientos() {
     if (!(m > 0)) return setMsg({ t: 'error', m: 'El monto debe ser mayor que cero.' })
     const datos = { fecha: editando.fecha, tipo: editando.tipo, monto: Math.round(m * 100) / 100,
       referencia: editando.referencia.trim() || null, concepto: editando.concepto.trim() || null }
-    if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : `¿Registrar este ${datos.tipo.toLowerCase()}?`, textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
-      mensaje: <><b>{datos.tipo === 'Depósito' ? 'Efectivo → Banco' : 'Banco → Efectivo'}</b> por <b>{dinero(datos.monto)}</b> el {fmtFecha(datos.fecha)}{datos.referencia ? ` (ref. ${datos.referencia})` : ''}.</> })) return
-    const { error } = editando.id
-      ? await supabase.from('movimientos_caja').update(datos).eq('id', editando.id)
-      : await supabase.from('movimientos_caja').insert(datos)
+    const r = await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : `¿Registrar este ${datos.tipo.toLowerCase()}?`, textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar', pin: true,
+      mensaje: <><b>{datos.tipo === 'Depósito' ? 'Efectivo → Banco' : 'Banco → Efectivo'}</b> por <b>{dinero(datos.monto)}</b> el {fmtFecha(datos.fecha)}{datos.referencia ? ` (ref. ${datos.referencia})` : ''}.</> })
+    if (!r) return
+    const { error } = await supabase.rpc('movimiento_guardar', { p_pin: r.pin, p_id: editando.id || null, p_fecha: datos.fecha,
+      p_tipo: datos.tipo, p_monto: datos.monto, p_referencia: datos.referencia, p_concepto: datos.concepto })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); setMsg({ t: 'ok', m: `${datos.tipo} guardado.` }); cargar()
   }
 
   async function borrar() {
-    if (!await confirmar({ titulo: `¿Eliminar este ${editando.tipo.toLowerCase()}?`, textoSi: 'Sí, eliminar', peligro: true,
-      mensaje: <>Vas a eliminar un {editando.tipo.toLowerCase()} de <b>{dinero(aNumero(editando.monto))}</b> del {fmtFecha(editando.fecha)}. Los saldos de efectivo y banco cambiarán.</> })) return
-    const { error } = await supabase.from('movimientos_caja').delete().eq('id', editando.id)
+    const r = await confirmar({ titulo: `¿Eliminar este ${editando.tipo.toLowerCase()}?`, textoSi: 'Sí, eliminar', peligro: true, pin: true,
+      mensaje: <>Vas a eliminar un {editando.tipo.toLowerCase()} de <b>{dinero(aNumero(editando.monto))}</b> del {fmtFecha(editando.fecha)}. Los saldos de efectivo y banco cambiarán.</> })
+    if (!r) return
+    const { error } = await supabase.rpc('movimiento_borrar', { p_pin: r.pin, p_id: editando.id })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
   }
@@ -118,7 +119,7 @@ export default function Movimientos() {
             <Campo etiqueta="Nº de referencia" ancho="completo"><input value={editando.referencia} onChange={setE('referencia')} /></Campo>
             <Campo etiqueta="Concepto" ancho="completo"><input value={editando.concepto} onChange={setE('concepto')} placeholder="Ej. Depósito ofrendas del domingo" /></Campo>
             <div className="botonera">
-              {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Borrar</button>}
+              {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Eliminar</button>}
               <span className="espacio" />
               <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar</button>

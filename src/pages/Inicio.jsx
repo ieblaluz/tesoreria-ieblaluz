@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, dinero, hoy } from '../supabase'
 import Icono from '../components/Iconos'
+import { leerEstado, suscribir } from '../offline'
 
 const saludo = () => {
   const h = new Date().getHours()
@@ -15,6 +16,27 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
     if (!verSaldos) return
     supabase.rpc('resumen_periodo', { p_desde: hoy(), p_hasta: hoy() }).then(({ data }) => setSaldos(data))
   }, [verSaldos])
+
+  // Avisos en las tarjetas
+  const [avisos, setAvisos] = useState({})
+  const [conexion, setConexion] = useState(leerEstado)
+  useEffect(() => suscribir(setConexion), [])
+  useEffect(() => {
+    if (puede('gastos')) {
+      supabase.from('gastos').select('id').is('fecha_pago', null)
+        .then(({ data }) => setAvisos((a) => ({ ...a, gastos: data?.length || 0 })), () => {})
+    }
+    if (puede('presupuesto')) {
+      supabase.from('v_presupuesto').select('id').eq('anio', new Date().getFullYear()).lt('diferencia', 0)
+        .then(({ data }) => setAvisos((a) => ({ ...a, presupuesto: data?.length || 0 })), () => {})
+    }
+  }, []) // eslint-disable-line
+  const avisoDe = (id) => {
+    if (id === 'gastos' && avisos.gastos) return `${avisos.gastos} por pagar`
+    if (id === 'presupuesto' && avisos.presupuesto) return `${avisos.presupuesto} ${avisos.presupuesto === 1 ? 'subcuenta excedida' : 'subcuentas excedidas'}`
+    if (id === 'caja' && conexion.pendientes) return `${conexion.pendientes} sin enviar`
+    return null
+  }
 
   const primerNombre = (perfil.nombre || '').split(' ')[0]
 
@@ -38,6 +60,7 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
       <div className="inicio-rejilla">
         {menu.filter((m) => m.id !== 'inicio').map((m) => (
           <button key={m.id} className="modulo" onClick={() => ir(m.id)} style={{ '--color-modulo': m.color }}>
+            {avisoDe(m.id) && <span className="modulo-aviso"><span aria-hidden="true">⚠</span> {avisoDe(m.id)}</span>}
             <span className="modulo-icono"><Icono nombre={m.icono} tam={24} /></span>
             <strong>{m.label}</strong>
             <span className="modulo-desc">{m.desc}</span>

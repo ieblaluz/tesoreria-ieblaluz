@@ -3,6 +3,7 @@ import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mens
 import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
+import { ComprobanteGasto } from '../components/Comprobantes'
 import useOrden from '../components/useOrden'
 import { AnalisisGastos } from '../components/Analisis'
 import useConfirmar from '../components/Confirmar'
@@ -12,6 +13,7 @@ const vacio = () => ({ fecha: hoy(), fecha_pago: hoy(), pendiente: false, cuenta
 
 export default function Gastos({ config, puede }) {
   const [alta, setAlta] = useState(null)
+  const [comprobante, setComprobante] = useState(null)
   const [confirmar, dialogo] = useConfirmar()
   const altaPermitida = puede('catalogos')
   const nuevoEn = (catalogo, extra) => (altaPermitida ? (texto) => setAlta({ catalogo, texto, extra }) : undefined)
@@ -226,7 +228,8 @@ export default function Gastos({ config, puede }) {
             <Campo etiqueta="Monto"><InputMonto required value={editando.monto} onChange={(v) => setEditando((p) => ({ ...p, monto: v }))} /></Campo>
             <Campo etiqueta="Comentario" ancho="completo"><input value={editando.comentario} onChange={setE('comentario')} /></Campo>
             <div className="botonera">
-              {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Borrar</button>}
+              {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Eliminar</button>}
+              {editando.id && original && <button type="button" className="btn btn-suave" onClick={() => setComprobante(original)}>Comprobante</button>}
               <span className="espacio" />
               <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar gasto</button>
@@ -247,6 +250,7 @@ export default function Gastos({ config, puede }) {
             if (alta.catalogo === 'autorizadores') { setAutorizadores((l) => [...l, f].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))); setV('autorizador_id')(fila.id) }
           }} />
       )}
+      {comprobante && <ComprobanteGasto gasto={comprobante} config={config} onCerrar={() => setComprobante(null)} />}
       {dialogo}
     </section>
   )

@@ -5,14 +5,19 @@ import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import { AnalisisIngresos } from '../components/Analisis'
 import useOrden from '../components/useOrden'
+import { ReciboIngreso } from '../components/Comprobantes'
 import useConfirmar from '../components/Confirmar'
 
 const turnoActual = () => (new Date().getHours() < 15 ? 'Mañana' : 'Tarde')
 const vacio = () => ({ fecha: hoy(), turno: turnoActual(), medio: 'Banco', hermano_id: '', grupo_id: '', pagador_id: '', monto: '', comentario: '' })
 
+// Registrado hoy (hora de España): se puede corregir sin PIN
+const registradoHoy = (ts) => !!ts && new Date(ts).toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' }) === hoy()
+
 export default function Ingresos({ config, puede }) {
   const editable = puede('ingresos_editar')
   const [alta, setAlta] = useState(null)
+  const [recibo, setRecibo] = useState(null)
   const [confirmar, dialogo] = useConfirmar()
   const altaPermitida = puede('catalogos')
   const [vista, setVista] = useState('registros')
@@ -78,19 +83,23 @@ export default function Ingresos({ config, puede }) {
       monto: Math.round(m * 100) / 100, comentario: editando.comentario?.trim() || null,
     }
     const h = hermanos.find((x) => x.id === datos.hermano_id)
-    if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : '¿Registrar este ingreso?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
-      mensaje: <>{editando.id ? 'Se modificará' : 'Se registrará'} el ingreso del sobre <b>{h?.nro_sobre} · {h?.nombre}</b> por <b>{dinero(datos.monto)}</b> ({datos.medio}, {fmtFecha(datos.fecha)}).</> })) return
-    const { error } = editando.id
-      ? await supabase.from('ingresos').update(datos).eq('id', editando.id)
-      : await supabase.from('ingresos').insert(datos)
+    // PIN: si es un ingreso registrado antes de hoy, o uno nuevo con fecha pasada
+    const conPin = editando.id ? !registradoHoy(editando.creado_en) : datos.fecha < hoy()
+    const r = await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : '¿Registrar este ingreso?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar', pin: conPin,
+      mensaje: <>{editando.id ? 'Se modificará' : 'Se registrará'} el ingreso del sobre <b>{h?.nro_sobre} · {h?.nombre}</b> por <b>{dinero(datos.monto)}</b> ({datos.medio}, {fmtFecha(datos.fecha)}).</> })
+    if (!r) return
+    const { error } = await supabase.rpc('ingreso_guardar', { p_pin: r.pin || null, p_id: editando.id || null, p_fecha: datos.fecha,
+      p_turno: datos.turno, p_medio: datos.medio, p_hermano: datos.hermano_id, p_grupo: datos.grupo_id, p_pagador: datos.pagador_id,
+      p_monto: datos.monto, p_comentario: datos.comentario })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); setMsg({ t: 'ok', m: 'Ingreso guardado.' }); cargar()
   }
 
   async function borrar(x) {
-    if (!await confirmar({ titulo: '¿Eliminar este ingreso?', textoSi: 'Sí, eliminar', peligro: true,
-      mensaje: <>Vas a eliminar <b>{dinero(aNumero(x.monto))}</b> del sobre <b>{x.nro_sobre} · {x.hermano_nombre}</b> del {fmtFecha(x.fecha)}. Esta acción no se puede deshacer.</> })) return
-    const { error } = await supabase.from('ingresos').delete().eq('id', x.id)
+    const r = await confirmar({ titulo: '¿Eliminar este ingreso?', textoSi: 'Sí, eliminar', peligro: true, pin: !registradoHoy(x.creado_en),
+      mensaje: <>Vas a eliminar <b>{dinero(aNumero(x.monto))}</b> del sobre <b>{x.nro_sobre} · {x.hermano_nombre}</b> del {fmtFecha(x.fecha)}. Esta acción no se puede deshacer.</> })
+    if (!r) return
+    const { error } = await supabase.rpc('ingreso_borrar', { p_pin: r.pin || null, p_id: x.id })
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
     setEditando(null); cargar()
   }
@@ -194,7 +203,8 @@ export default function Ingresos({ config, puede }) {
             </Campo>
             <Campo etiqueta="Comentario" ancho="completo"><input value={editando.comentario || ''} onChange={setE('comentario')} placeholder="Ej. Alquiler de noviembre, referencia de la transferencia…" /></Campo>
             <div className="botonera">
-              {editando.id && <button type="button" className="btn btn-peligro" onClick={() => borrar(editando)}>Borrar</button>}
+              {editando.id && <button type="button" className="btn btn-peligro" onClick={() => borrar(editando)}>Eliminar</button>}
+              {editando.id && <button type="button" className="btn btn-suave" onClick={() => setRecibo(filas.find((x) => x.id === editando.id) || editando)}>Recibo</button>}
               <span className="espacio" />
               <button type="button" className="btn btn-suave" autoFocus={!!editando.id} onClick={() => setEditando(null)}>Cancelar</button>
               <button className="btn btn-primario">Guardar ingreso</button>
@@ -211,6 +221,7 @@ export default function Ingresos({ config, puede }) {
             else { setGrupos((l) => [...l, conActivo]); setEditando((p) => ({ ...p, grupo_id: fila.id })) }
           }} />
       )}
+      {recibo && <ReciboIngreso ingreso={recibo} config={config} onCerrar={() => setRecibo(null)} />}
       {dialogo}
     </section>
   )
