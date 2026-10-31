@@ -558,3 +558,10 @@ th.ordenable:hover { color: var(--primario); }
 .bloqueo .btn-texto { justify-self: center; }
 .bloqueo-usuario { display: flex; align-items: center; gap: .7rem; padding: .6rem .8rem; background: #F6F7F9; border-radius: 10px; font-weight: 600; }
 .bloqueo-usuario small { display: block; font-weight: 400; color: var(--tenue); }
+
+/* ---------- Campo de importe ---------- */
+.monto-caja { position: relative; }
+.monto-caja input { padding-right: 2.2rem; text-align: right; font-variant-numeric: tabular-nums; }
+.monto-caja input.monto { font-weight: 700; }
+.monto-euro { position: absolute; right: .8rem; top: 50%; transform: translateY(-50%); color: var(--tenue); font-weight: 700; pointer-events: none; }
+.etiqueta-pendiente { font-size: .78rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; background: #FEF3E2; color: #8A4B08; }
