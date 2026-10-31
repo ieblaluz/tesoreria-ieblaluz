@@ -64,3 +64,24 @@ export function Aviso({ tipo = 'error', children, onCerrar }) {
 export function Cargando({ texto = 'Cargando…' }) {
   return <p className="cargando">{texto}</p>
 }
+
+// Campo de importe: alineado a la derecha y, al salir del campo, con formato 1.234,50
+const formatoMonto = (n) => n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' })
+export const fmtMonto = (v) => (v === '' || v == null || Number.isNaN(Number(v)) ? '' : formatoMonto(Number(v)))
+const leerMonto = (v) => {
+  let t = String(v ?? '').trim().replace(/\s|€/g, '')
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.')
+  const n = parseFloat(t)
+  return Number.isFinite(n) ? n : NaN
+}
+export function InputMonto({ value, onChange, grande = true, ...resto }) {
+  return (
+    <div className="monto-caja">
+      <input className={grande ? 'monto-grande' : 'monto'} inputMode="decimal" placeholder="0,00" autoComplete="off"
+        value={value} onChange={(e) => onChange(e.target.value)}
+        onBlur={() => { const n = leerMonto(value); if (Number.isFinite(n)) onChange(formatoMonto(Math.round(n * 100) / 100)) }}
+        onFocus={(e) => e.target.select()} {...resto} />
+      <span className="monto-euro" aria-hidden="true">€</span>
+    </div>
+  )
+}
