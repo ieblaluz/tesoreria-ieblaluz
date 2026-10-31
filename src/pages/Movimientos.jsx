@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, dinero, hoy, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
-import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import useOrden from '../components/useOrden'
 import useConfirmar from '../components/Confirmar'
 
@@ -88,7 +88,7 @@ export default function Movimientos() {
             <tbody>
               {filas.length === 0 && <tr><td colSpan="5" className="tenue">No hay movimientos en este periodo.</td></tr>}
               {ordenadas.map((x) => (
-                <tr key={x.id} className="clic" onClick={() => setEditando({ ...x, monto: String(x.monto).replace('.', ','), referencia: x.referencia || '', concepto: x.concepto || '' })}>
+                <tr key={x.id} className="clic" onClick={() => setEditando({ ...x, monto: fmtMonto(x.monto), referencia: x.referencia || '', concepto: x.concepto || '' })}>
                   <td>{fmtFecha(x.fecha)}</td>
                   <td><span className={'etiqueta-tipo ' + (x.tipo === 'Depósito' ? 'deposito' : 'reintegro')}>{x.tipo === 'Depósito' ? 'Efectivo → Banco' : 'Banco → Efectivo'}</span></td>
                   <td>{x.referencia}</td><td>{x.concepto}</td>
@@ -114,7 +114,7 @@ export default function Movimientos() {
               </div>
             </div>
             <Campo etiqueta="Fecha"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
-            <Campo etiqueta="Monto"><input inputMode="decimal" required value={editando.monto} onChange={setE('monto')} /></Campo>
+            <Campo etiqueta="Monto"><InputMonto required value={editando.monto} onChange={(v) => setEditando((p) => ({ ...p, monto: v }))} /></Campo>
             <Campo etiqueta="Nº de referencia" ancho="completo"><input value={editando.referencia} onChange={setE('referencia')} /></Campo>
             <Campo etiqueta="Concepto" ancho="completo"><input value={editando.concepto} onChange={setE('concepto')} placeholder="Ej. Depósito ofrendas del domingo" /></Campo>
             <div className="botonera">

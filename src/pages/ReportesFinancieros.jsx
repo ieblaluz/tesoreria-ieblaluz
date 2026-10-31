@@ -20,6 +20,11 @@ const ingresosDe = (desde, hasta) => traerTodo(() => supabase.from('v_ingresos')
   .select('id,fecha,mes,anio,medio,monto,grupo,grupo_id,hermano_id,nro_sobre,hermano_nombre,hermano_apellidos')
   .gte('fecha', desde).lte('fecha', hasta).order('id'))
 
+// Gastos PAGADOS en el periodo (por fecha de pago): para el informe de ingresos y egresos
+const gastosPagadosDe = (desde, hasta) => traerTodo(() => supabase.from('v_gastos')
+  .select('id,fecha,fecha_pago,modalidad,monto,subcuenta,nro_subcuenta')
+  .gte('fecha_pago', desde).lte('fecha_pago', hasta).order('id'))
+
 const gastosDe = (desde, hasta) => traerTodo(() => supabase.from('v_gastos')
   .select('id,fecha,mes,trimestre,modalidad,monto,factura,concepto,subcuenta_id,nro_subcuenta,subcuenta,nro_cuenta,ministerio,proveedor_id,proveedor,cif_nie')
   .gte('fecha', desde).lte('fecha', hasta).order('id'))
@@ -89,7 +94,7 @@ export function InformeIngresosEgresos({ config }) {
   async function construir() {
     if (f.desde > f.hasta) throw new Error('La fecha «desde» no puede ser posterior a «hasta».')
     const [{ data: res, error }, ing, gas] = await Promise.all([
-      supabase.rpc('resumen_periodo', { p_desde: f.desde, p_hasta: f.hasta }), ingresosDe(f.desde, f.hasta), gastosDe(f.desde, f.hasta)])
+      supabase.rpc('resumen_periodo', { p_desde: f.desde, p_hasta: f.hasta }), ingresosDe(f.desde, f.hasta), gastosPagadosDe(f.desde, f.hasta)])
     if (error) throw error
 
     const agrupar = (filas, campoMedio, medio, etiqueta) => {

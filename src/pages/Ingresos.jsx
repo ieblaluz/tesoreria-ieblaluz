@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
-import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import { AnalisisIngresos } from '../components/Analisis'
@@ -141,7 +141,7 @@ export default function Ingresos({ config, puede }) {
             <thead><tr>{th('fecha', 'Fecha')}{th('turno', 'Turno')}{th('nro_sobre', 'Sobre')}{th('hermano', 'Nombre / concepto')}{th('pagador', 'Pagado por')}{th('grupo', 'Grupo')}{th('medio', 'Medio')}{th('monto', 'Monto', 'num')}</tr></thead>
             <tbody>
               {ordenadas.map((x) => (
-                <tr key={x.id} className={editable ? 'clic' : ''} onClick={editable ? () => setEditando({ ...x, pagador_id: x.pagador_id || '', monto: String(x.monto).replace('.', ',') }) : undefined}>
+                <tr key={x.id} className={editable ? 'clic' : ''} onClick={editable ? () => setEditando({ ...x, pagador_id: x.pagador_id || '', monto: fmtMonto(x.monto) }) : undefined}>
                   <td>{fmtFecha(x.fecha)}</td><td>{x.turno}</td><td>{x.nro_sobre}</td>
                   <td>{x.hermano_nombre} {x.hermano_apellidos}</td><td>{x.pagador}</td><td>{x.grupo}</td><td>{x.medio}</td>
                   <td className="num">{dinero(x.monto)}</td>
@@ -190,7 +190,7 @@ export default function Ingresos({ config, puede }) {
               </div>
             </div>
             <Campo etiqueta="Monto">
-              <input className="monto-grande" inputMode="decimal" required placeholder="0,00" value={editando.monto} onChange={setE('monto')} />
+              <InputMonto required value={editando.monto} onChange={(v) => setEditando((p) => ({ ...p, monto: v }))} />
             </Campo>
             <Campo etiqueta="Comentario" ancho="completo"><input value={editando.comentario || ''} onChange={setE('comentario')} placeholder="Ej. Alquiler de noviembre, referencia de la transferencia…" /></Campo>
             <div className="botonera">

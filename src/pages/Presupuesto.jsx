@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, aNumero, mensajeError } from '../supabase'
-import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import useConfirmar from '../components/Confirmar'
 
 export default function Presupuesto() {
@@ -111,7 +111,7 @@ export default function Presupuesto() {
                   <td className="col-avance"><span className="avance"><span style={{ width: `${pct(c.ejecutado, c.monto)}%` }} /></span></td>
                 </tr>
                 {c.filas.map((f) => (
-                  <tr key={f.id} className="clic" onClick={() => setEditando({ id: f.id, subcuenta_id: f.subcuenta_id, monto: String(f.monto).replace('.', ','), comentario: f.comentario || '' })}>
+                  <tr key={f.id} className="clic" onClick={() => setEditando({ id: f.id, subcuenta_id: f.subcuenta_id, monto: fmtMonto(f.monto), comentario: f.comentario || '' })}>
                     <td className="sangria">{f.nro_subcuenta} · {f.subcuenta}</td>
                     <td className="num">{dinero(f.monto)}</td><td className="num">{dinero(f.ejecutado)}</td>
                     <td className={'num' + (Number(f.diferencia) < 0 ? ' neg' : '')}>{dinero(f.diferencia)}</td>
@@ -137,8 +137,7 @@ export default function Presupuesto() {
                   <option key={s.id} value={s.id}>{s.cuentas?.nro} · {s.cuentas?.ministerio} → {s.nro} · {s.nombre}</option>)}
               </select>
             </Campo>
-            <Campo etiqueta="Monto presupuestado"><input inputMode="decimal" required value={editando.monto}
-              onChange={(e) => setEditando({ ...editando, monto: e.target.value })} /></Campo>
+            <Campo etiqueta="Monto presupuestado"><InputMonto required value={editando.monto} onChange={(v) => setEditando((p) => ({ ...p, monto: v }))} /></Campo>
             <Campo etiqueta="Comentario"><input value={editando.comentario}
               onChange={(e) => setEditando({ ...editando, comentario: e.target.value })} /></Campo>
             <div className="botonera">

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase, dinero, hoy, primerDiaMes, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
-import { Aviso, Campo, Modal, Cargando } from '../components/ui'
+import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import Combobox from '../components/Combobox'
 import NuevoRegistro from '../components/NuevoRegistro'
 import useOrden from '../components/useOrden'
 import { AnalisisGastos } from '../components/Analisis'
 import useConfirmar from '../components/Confirmar'
 
-const vacio = () => ({ fecha: hoy(), cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
+const vacio = () => ({ fecha: hoy(), fecha_pago: hoy(), pendiente: false, cuenta_id: '', subcuenta_id: '', proveedor_id: '', factura: '', concepto: '',
   modalidad: 'Banco', monto: '', autorizador_id: '', comentario: '' })
 
 export default function Gastos({ config, puede }) {
@@ -20,7 +20,7 @@ export default function Gastos({ config, puede }) {
   const [subcuentas, setSubcuentas] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [autorizadores, setAutorizadores] = useState([])
-  const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), cuenta: '', modalidad: '', texto: '' })
+  const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), cuenta: '', modalidad: '', estado: '', texto: '' })
   const [filas, setFilas] = useState(null)
   const [editando, setEditando] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -42,11 +42,13 @@ export default function Gastos({ config, puede }) {
         if (f.hasta) q = q.lte('fecha', f.hasta)
         if (f.cuenta) q = q.eq('cuenta_id', f.cuenta)
         if (f.modalidad) q = q.eq('modalidad', f.modalidad)
+        if (f.estado === 'pendiente') q = q.is('fecha_pago', null)
+        if (f.estado === 'pagado') q = q.not('fecha_pago', 'is', null)
         return q.order('fecha', { ascending: false }).order('creado_en', { ascending: false })
       })
       setFilas(datos)
     } catch (e) { setMsg({ t: 'error', m: mensajeError(e) }) }
-  }, [f.desde, f.hasta, f.cuenta, f.modalidad])
+  }, [f.desde, f.hasta, f.cuenta, f.modalidad, f.estado])
   useEffect(() => { cargar() }, [cargar])
 
   // Presupuesto de la subcuenta elegida en el año del gasto
@@ -78,8 +80,8 @@ export default function Gastos({ config, puede }) {
     if (!x) { setOriginal(null); return setEditando(vacio()) }
     setOriginal(x)
     setEditando({
-      id: x.id, fecha: x.fecha, cuenta_id: x.cuenta_id, subcuenta_id: x.subcuenta_id, proveedor_id: x.proveedor_id || '',
-      factura: x.factura || '', concepto: x.concepto || '', modalidad: x.modalidad, monto: String(x.monto).replace('.', ','),
+      id: x.id, fecha: x.fecha, fecha_pago: x.fecha_pago || '', pendiente: !x.fecha_pago, cuenta_id: x.cuenta_id, subcuenta_id: x.subcuenta_id, proveedor_id: x.proveedor_id || '',
+      factura: x.factura || '', concepto: x.concepto || '', modalidad: x.modalidad, monto: fmtMonto(x.monto),
       autorizador_id: x.autorizador_id || '', comentario: x.comentario || '',
     })
   }
@@ -92,13 +94,13 @@ export default function Gastos({ config, puede }) {
     if (!editando.autorizador_id) return setMsg({ t: 'error', m: 'Elige quién autoriza.' })
     if (!(m > 0)) return setMsg({ t: 'error', m: 'El monto debe ser mayor que cero.' })
     const datos = {
-      fecha: editando.fecha, subcuenta_id: editando.subcuenta_id, proveedor_id: editando.proveedor_id || null,
+      fecha: editando.fecha, fecha_pago: editando.pendiente ? null : (editando.fecha_pago || editando.fecha), subcuenta_id: editando.subcuenta_id, proveedor_id: editando.proveedor_id || null,
       factura: editando.factura.trim() || null, concepto: editando.concepto.trim(), modalidad: editando.modalidad,
       monto: Math.round(m * 100) / 100, autorizador_id: editando.autorizador_id, comentario: editando.comentario.trim() || null,
     }
     const sub = subcuentas.find((x) => x.id === datos.subcuenta_id)
     if (!await confirmar({ titulo: editando.id ? '¿Guardar los cambios?' : '¿Registrar este gasto?', textoSi: editando.id ? 'Sí, guardar' : 'Sí, registrar',
-      mensaje: <><b>{dinero(datos.monto)}</b> en <b>{sub?.nro} · {sub?.nombre}</b>: {datos.concepto} ({datos.modalidad}, {fmtFecha(datos.fecha)}).</> })) return
+      mensaje: <><b>{dinero(datos.monto)}</b> en <b>{sub?.nro} · {sub?.nombre}</b>: {datos.concepto} ({datos.modalidad}; factura del {fmtFecha(datos.fecha)}; {datos.fecha_pago ? `pagado el ${fmtFecha(datos.fecha_pago)}` : 'pendiente de pago'}).</> })) return
     const { error } = editando.id
       ? await supabase.from('gastos').update(datos).eq('id', editando.id)
       : await supabase.from('gastos').insert(datos)
@@ -143,6 +145,9 @@ export default function Gastos({ config, puede }) {
             {cuentas.map((c) => <option key={c.id} value={c.id}>{c.nro} · {c.ministerio}</option>)}
           </select>
         </Campo>
+        <Campo etiqueta="Estado">
+          <select value={f.estado} onChange={set('estado')}><option value="">Todos</option><option value="pagado">Pagados</option><option value="pendiente">Pendientes de pago</option></select>
+        </Campo>
         <Campo etiqueta="Modalidad">
           <select value={f.modalidad} onChange={set('modalidad')}><option value="">Todas</option><option>Efectivo</option><option>Banco</option></select>
         </Campo>
@@ -153,19 +158,20 @@ export default function Gastos({ config, puede }) {
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr>{th('fecha', 'Fecha')}{th('subcuenta', 'Subcuenta')}{th('concepto', 'Concepto')}{th('proveedor', 'Proveedor')}{th('modalidad', 'Modalidad')}{th('monto', 'Monto', 'num')}</tr></thead>
+            <thead><tr>{th('fecha', 'Factura')}{th('fecha_pago', 'Pago')}{th('subcuenta', 'Subcuenta')}{th('concepto', 'Concepto')}{th('proveedor', 'Proveedor')}{th('modalidad', 'Modalidad')}{th('monto', 'Monto', 'num')}</tr></thead>
             <tbody>
               {ordenadas.map((x) => (
                 <tr key={x.id} className="clic" onClick={() => abrir(x)}>
                   <td>{fmtFecha(x.fecha)}</td>
+                  <td>{x.fecha_pago ? fmtFecha(x.fecha_pago) : <span className="etiqueta-pendiente">Pendiente</span>}</td>
                   <td>{x.nro_subcuenta} · {x.subcuenta}<small className="sub">{x.ministerio}</small></td>
                   <td>{x.concepto}</td><td>{x.proveedor}</td><td>{x.modalidad}</td>
                   <td className="num">{dinero(x.monto)}</td>
                 </tr>
               ))}
-              {visibles.length === 0 && <tr><td colSpan="6" className="tenue">No hay gastos con estos filtros.</td></tr>}
+              {visibles.length === 0 && <tr><td colSpan="7" className="tenue">No hay gastos con estos filtros.</td></tr>}
             </tbody>
-            <tfoot><tr><td colSpan="5">{visibles.length} movimientos</td><td className="num">{dinero(total)}</td></tr></tfoot>
+            <tfoot><tr><td colSpan="6">{visibles.length} movimientos</td><td className="num">{dinero(total)}</td></tr></tfoot>
           </table>
         </div>
       )}
@@ -175,8 +181,16 @@ export default function Gastos({ config, puede }) {
       {editando && (
         <Modal titulo={editando.id ? 'Editar gasto' : 'Nuevo gasto'} onCerrar={() => setEditando(null)} ancho="720px">
           <form className="formulario" onSubmit={guardar}>
-            <Campo etiqueta="Fecha"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
-            <Campo etiqueta="Factura"><input value={editando.factura} onChange={setE('factura')} /></Campo>
+            <Campo etiqueta="Nº de factura"><input value={editando.factura} onChange={setE('factura')} /></Campo>
+            <Campo etiqueta="Fecha de la factura"><input type="date" required value={editando.fecha} onChange={setE('fecha')} /></Campo>
+            <Campo etiqueta="Fecha de pago" ayuda={editando.pendiente ? 'No resta de los saldos hasta que se pague.' : 'Día en que salió el dinero.'}>
+              <input type="date" value={editando.pendiente ? '' : editando.fecha_pago} disabled={editando.pendiente}
+                onChange={setE('fecha_pago')} required={!editando.pendiente} />
+            </Campo>
+            <label className="check campo-check">
+              <input type="checkbox" checked={editando.pendiente} onChange={(e) => setEditando({ ...editando, pendiente: e.target.checked, fecha_pago: e.target.checked ? '' : (editando.fecha_pago || hoy()) })} />
+              Pendiente de pago
+            </label>
             <Campo etiqueta="Cuenta (ministerio)">
               <Combobox required valor={editando.cuenta_id} onCambio={setV('cuenta_id')} onNuevo={nuevoEn('cuentas')} etiquetaNuevo="Nueva cuenta"
                 opciones={activos(cuentas, editando.cuenta_id).map((c) => ({ id: c.id, etiqueta: `${c.nro} · ${c.ministerio}` }))} />
@@ -209,7 +223,7 @@ export default function Gastos({ config, puede }) {
             <Campo etiqueta="Modalidad">
               <select value={editando.modalidad} onChange={setE('modalidad')}><option>Banco</option><option>Efectivo</option></select>
             </Campo>
-            <Campo etiqueta="Monto"><input inputMode="decimal" required value={editando.monto} onChange={setE('monto')} /></Campo>
+            <Campo etiqueta="Monto"><InputMonto required value={editando.monto} onChange={(v) => setEditando((p) => ({ ...p, monto: v }))} /></Campo>
             <Campo etiqueta="Comentario" ancho="completo"><input value={editando.comentario} onChange={setE('comentario')} /></Campo>
             <div className="botonera">
               {editando.id && <button type="button" className="btn btn-peligro" onClick={borrar}>Borrar</button>}

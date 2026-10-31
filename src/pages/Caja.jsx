@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, dinero, hoy, aNumero, mensajeError } from '../supabase'
-import { Aviso, Campo, Modal } from '../components/ui'
+import { Aviso, Campo, Modal, InputMonto, fmtMonto } from '../components/ui'
 import useConfirmar from '../components/Confirmar'
 import Icono from '../components/Iconos'
 import Combobox from '../components/Combobox'
@@ -195,7 +195,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
   const [linea, setLinea] = useState(null)
   const puedeCorregir = (l) => l.pendiente || puede('ingresos_editar') || (l.creado_por === perfil.id
     && new Date(l.creado_en).toLocaleDateString('sv-SE') === hoy() && (config?.contador_borra_mismo_dia ?? true))
-  const abrirLinea = (l) => setLinea({ ...l, monto: String(l.monto).replace('.', ','), comentario: l.comentario || '' })
+  const abrirLinea = (l) => setLinea({ ...l, monto: fmtMonto(l.monto), comentario: l.comentario || '' })
 
   async function guardarLinea() {
     const m = aNumero(linea.monto)
@@ -454,7 +454,7 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
                 {['Efectivo', 'Banco'].map((t) => <button key={t} type="button" className={linea.medio === t ? 'sel' : ''} onClick={() => setLinea({ ...linea, medio: t })}>{t}</button>)}
               </div>
             </div>
-            <Campo etiqueta="Monto"><input className="monto-grande" inputMode="decimal" required value={linea.monto} onChange={(e) => setLinea({ ...linea, monto: e.target.value })} /></Campo>
+            <Campo etiqueta="Monto"><InputMonto required value={linea.monto} onChange={(v) => setLinea((p) => ({ ...p, monto: v }))} /></Campo>
             <Campo etiqueta="Comentario" ancho="completo"><input value={linea.comentario} onChange={(e) => setLinea({ ...linea, comentario: e.target.value })} /></Campo>
             <div className="botonera">
               <button type="button" className="btn btn-peligro" onClick={borrarLinea}>Eliminar</button>

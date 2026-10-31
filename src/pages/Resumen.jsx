@@ -78,6 +78,7 @@ export default function Resumen() {
             <div><span>Saldo total hoy</span><strong>{dinero(r.saldo_actual)}</strong></div>
             <div><span>En efectivo</span><strong>{dinero(r.saldo_efectivo)}</strong></div>
             <div><span>En banco</span><strong>{dinero(r.saldo_banco)}</strong></div>
+            {Number(r.pendiente_pago) > 0 && <div className="pendiente-pago"><span>Facturas pendientes de pago</span><strong>{dinero(r.pendiente_pago)}</strong></div>}
           </div>
           <div className="rejilla-2">
             <Barras titulo="Ingresos por grupo" filas={r.por_grupo} vacio="Sin ingresos en este periodo." />
