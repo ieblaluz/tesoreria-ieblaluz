@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando } from '../components/ui'
 import useOrden from '../components/useOrden'
+import { ibanValido, formatoIban } from '../pagos'
 import useConfirmar from '../components/Confirmar'
 
 // Definición de cada catálogo: campos del formulario y columnas visibles
@@ -26,8 +27,9 @@ export const CATALOGOS = [
       { k: 'email', l: 'Email', t: 'email', ancho: 'completo' }],
     columnas: ['nombre', 'dni_nie', 'telefono', 'email'] },
   { id: 'proveedores', titulo: 'Proveedores', singular: 'proveedor', orden: 'nombre',
-    campos: [{ k: 'nombre', l: 'Proveedor', req: true, ancho: 'completo' }, { k: 'cif_nie', l: 'CIF/NIE', ancho: 'completo' }, { k: 'direccion', l: 'Dirección', ancho: 'completo' }],
-    columnas: ['nombre', 'cif_nie', 'direccion'] },
+    campos: [{ k: 'nombre', l: 'Proveedor', req: true, ancho: 'completo' }, { k: 'cif_nie', l: 'CIF/NIE', ancho: 'completo' }, { k: 'direccion', l: 'Dirección', ancho: 'completo' },
+      { k: 'iban', l: 'IBAN (si se le paga por transferencia)', t: 'iban', ancho: 'completo' }, { k: 'banco', l: 'Entidad bancaria', ancho: 'completo' }],
+    columnas: ['nombre', 'cif_nie', 'banco', 'direccion'] },
   { id: 'cuentas', titulo: 'Cuentas', singular: 'cuenta', orden: 'nro',
     numero: { campo: 'nro', rpc: 'siguiente_nro_cuenta', nombre: 'número de cuenta' },
     campos: [{ k: 'nro', l: 'Nº de cuenta', t: 'numero', req: true }, { k: 'ministerio', l: 'Ministerio', req: true }],
@@ -197,6 +199,10 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
     for (const c of def.campos) {
       let v = form[c.k]
       if (c.t === 'check') { datos[c.k] = !!v; continue }
+      if (c.t === 'iban' && v) {
+        v = String(v).replace(/\s+/g, '').toUpperCase()
+        if (!ibanValido(v)) return setError('El IBAN no es válido: revisa que esté completo y sin errores (p. ej. ES91 2100 0418 4502 0005 1332).')
+      }
       if (c.si && !c.si(form)) { datos[c.k] = null; continue } // campo oculto: se vacía
       if (typeof v === 'string') v = v.trim()
       if (c.req && (v === '' || v == null)) return setError(`Falta: ${c.l}.`)
@@ -250,7 +256,8 @@ export function Formulario({ def, inicial, refs, onCerrar, onGuardado }) {
                     <option key={r.id} value={r.id}>{etiquetaRef[c.ref](r)}</option>)}
                 </select>
               ) : (
-                <input type={c.t === 'numero' ? 'number' : c.t || 'text'} min={c.t === 'numero' ? 0 : undefined}
+                <input type={c.t === 'numero' ? 'number' : c.t === 'iban' ? 'text' : c.t || 'text'}
+                  onBlur={c.t === 'iban' ? () => setForm((f) => ({ ...f, [c.k]: formatoIban(f[c.k]) })) : undefined} min={c.t === 'numero' ? 0 : undefined}
                   value={form[c.k]} onChange={onChange} required={c.req} />
               )}
             </Campo>

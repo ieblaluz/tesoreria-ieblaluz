@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase, dinero, hoy } from '../supabase'
 import Icono from '../components/Iconos'
 import { leerEstado, suscribir } from '../offline'
+import CalendarioPagos from '../components/CalendarioPagos'
+import { Modal } from '../components/ui'
+import { pagosParaAvisar, diasHasta, formatoIban } from '../pagos'
+
+const CLAVE_AVISO = 'tesoreria-aviso-pagos'
 
 const saludo = () => {
   const h = new Date().getHours()
@@ -35,8 +40,23 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
     if (id === 'gastos' && avisos.gastos) return `${avisos.gastos} por pagar`
     if (id === 'presupuesto' && avisos.presupuesto) return `${avisos.presupuesto} ${avisos.presupuesto === 1 ? 'subcuenta excedida' : 'subcuentas excedidas'}`
     if (id === 'caja' && conexion.pendientes) return `${conexion.pendientes} sin enviar`
+    if (id === 'pagos' && avisos.pagos) return `${avisos.pagos} por atender`
     return null
   }
+
+  // Aviso de pagos al abrir la app (una vez al día)
+  const verPagos = puede('gastos')
+  const [avisoPagos, setAvisoPagos] = useState(null)
+  useEffect(() => {
+    if (!verPagos) return
+    let visto = null
+    try { visto = localStorage.getItem(CLAVE_AVISO) } catch { /* nada */ }
+    pagosParaAvisar().then((l) => {
+      setAvisos((a) => ({ ...a, pagos: l.length }))
+      if (l.length && visto !== hoy()) setAvisoPagos(l)
+    }).catch(() => {})
+  }, [verPagos])
+  const cerrarAviso = () => { try { localStorage.setItem(CLAVE_AVISO, hoy()) } catch { /* nada */ } setAvisoPagos(null) }
 
   const primerNombre = (perfil.nombre || '').split(' ')[0]
 
@@ -57,6 +77,7 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
         )}
       </header>
 
+      <div className={'inicio-cuerpo' + (verPagos ? ' con-calendario' : '')}>
       <div className="inicio-rejilla">
         {menu.filter((m) => m.id !== 'inicio').map((m) => (
           <button key={m.id} className="modulo" onClick={() => ir(m.id)} style={{ '--color-modulo': m.color }}>
@@ -67,6 +88,35 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
           </button>
         ))}
       </div>
+      {verPagos && (
+        <aside className="panel inicio-calendario">
+          <h2>Calendario de pagos</h2>
+          <CalendarioPagos compacto ir={ir} />
+        </aside>
+      )}
+      </div>
+
+      {avisoPagos && (
+        <Modal titulo="Pagos que requieren atención" onCerrar={cerrarAviso} clase="confirmacion" ancho="640px">
+          <p className="tenue modal-ayuda">Este aviso aparece una vez al día al abrir la app.</p>
+          <ul className="aviso-pagos">
+            {avisoPagos.map((p) => {
+              const d = diasHasta(p.fecha)
+              return (
+                <li key={p.clave} className={d < 0 ? 'vencido' : 'proximo'}>
+                  <span className="aviso-cuando">{d < 0 ? `Vencido hace ${-d} día${d === -1 ? '' : 's'}` : d === 0 ? 'Hoy' : d === 1 ? 'Mañana' : `En ${d} días`}</span>
+                  <span className="aviso-quien"><b>{p.proveedor || p.concepto}</b> · {p.concepto}{p.iban && <small>IBAN {formatoIban(p.iban)}</small>}</span>
+                  <span className="aviso-monto">{p.monto != null ? dinero(p.monto) : ''}</span>
+                </li>
+              )
+            })}
+          </ul>
+          <div className="botonera"><span className="espacio" />
+            <button className="btn btn-suave" onClick={() => { cerrarAviso(); ir('pagos') }}>Ver calendario</button>
+            <button className="btn btn-primario" autoFocus onClick={cerrarAviso}>Entendido</button>
+          </div>
+        </Modal>
+      )}
     </section>
   )
 }

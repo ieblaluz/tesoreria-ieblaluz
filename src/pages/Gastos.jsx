@@ -82,7 +82,7 @@ export default function Gastos({ config, puede }) {
     if (!x) { setOriginal(null); return setEditando(vacio()) }
     setOriginal(x)
     setEditando({
-      id: x.id, fecha: x.fecha, fecha_pago: x.fecha_pago || '', pendiente: !x.fecha_pago, cuenta_id: x.cuenta_id, subcuenta_id: x.subcuenta_id, proveedor_id: x.proveedor_id || '',
+      id: x.id, fecha: x.fecha, fecha_pago: x.fecha_pago || '', fecha_vencimiento: x.fecha_vencimiento || '', pendiente: !x.fecha_pago, cuenta_id: x.cuenta_id, subcuenta_id: x.subcuenta_id, proveedor_id: x.proveedor_id || '',
       factura: x.factura || '', concepto: x.concepto || '', modalidad: x.modalidad, monto: fmtMonto(x.monto),
       autorizador_id: x.autorizador_id || '', comentario: x.comentario || '',
     })
@@ -96,7 +96,8 @@ export default function Gastos({ config, puede }) {
     if (!editando.autorizador_id) return setMsg({ t: 'error', m: 'Elige quién autoriza.' })
     if (!(m > 0)) return setMsg({ t: 'error', m: 'El monto debe ser mayor que cero.' })
     const datos = {
-      fecha: editando.fecha, fecha_pago: editando.pendiente ? null : (editando.fecha_pago || editando.fecha), subcuenta_id: editando.subcuenta_id, proveedor_id: editando.proveedor_id || null,
+      fecha: editando.fecha, fecha_pago: editando.pendiente ? null : (editando.fecha_pago || editando.fecha),
+      fecha_vencimiento: editando.pendiente ? (editando.fecha_vencimiento || null) : null, subcuenta_id: editando.subcuenta_id, proveedor_id: editando.proveedor_id || null,
       factura: editando.factura.trim() || null, concepto: editando.concepto.trim(), modalidad: editando.modalidad,
       monto: Math.round(m * 100) / 100, autorizador_id: editando.autorizador_id, comentario: editando.comentario.trim() || null,
     }
@@ -193,6 +194,11 @@ export default function Gastos({ config, puede }) {
               <input type="checkbox" checked={editando.pendiente} onChange={(e) => setEditando({ ...editando, pendiente: e.target.checked, fecha_pago: e.target.checked ? '' : (editando.fecha_pago || hoy()) })} />
               Pendiente de pago
             </label>
+            {editando.pendiente && (
+              <Campo etiqueta="Fecha de vencimiento" ayuda="Aparecerá en el calendario de pagos ese día.">
+                <input type="date" value={editando.fecha_vencimiento || ''} onChange={setE('fecha_vencimiento')} />
+              </Campo>
+            )}
             <Campo etiqueta="Cuenta (ministerio)">
               <Combobox required valor={editando.cuenta_id} onCambio={setV('cuenta_id')} onNuevo={nuevoEn('cuentas')} etiquetaNuevo="Nueva cuenta"
                 opciones={activos(cuentas, editando.cuenta_id).map((c) => ({ id: c.id, etiqueta: `${c.nro} · ${c.ministerio}` }))} />
