@@ -650,3 +650,17 @@ th.ordenable:hover { color: var(--primario); }
 .aviso-quien small { display: block; color: var(--tenue); }
 .aviso-monto { font-weight: 700; font-variant-numeric: tabular-nums; }
 @media (max-width: 600px) { .aviso-pagos li { grid-template-columns: 1fr auto; } .aviso-cuando { grid-column: 1 / -1; } }
+
+/* ---------- Inicio compacto: todo cabe en una pantalla ---------- */
+.inicio .inicio-cab { align-items: center; margin-bottom: 1rem; }
+.inicio .inicio-saludo { font-size: 1.5rem; color: var(--tinta); margin: 0; }
+.inicio .inicio-saldos div { padding: .55rem 1.1rem; }
+.inicio .inicio-saldos strong { font-size: 1.05rem; }
+.inicio .inicio-rejilla { gap: .8rem; }
+.inicio .modulo { padding: .95rem 1.15rem .9rem; border-radius: 14px; }
+.inicio .modulo-icono { width: 42px; height: 42px; border-radius: 11px; margin-bottom: .55rem; }
+.inicio .modulo strong { font-size: 1rem; }
+.inicio .modulo-desc { font-size: .82rem; }
+.inicio .inicio-calendario { padding: 1rem 1.1rem; }
+.inicio .calendario.compacto .cal-celda { min-height: 38px; }
+.contenido:has(> .inicio) { padding-top: 1.25rem; padding-bottom: 1.25rem; }

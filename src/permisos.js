@@ -8,6 +8,7 @@ export const PERMISOS = [
   { id: 'movimientos', nombre: 'Caja y banco', desc: 'Registrar depósitos y reintegros' },
   { id: 'presupuesto', nombre: 'Presupuesto', desc: 'Ver y modificar el presupuesto anual' },
   { id: 'reportes_tablon', nombre: 'Reporte del tablón', desc: 'Anotar quién contó e imprimir el reporte del culto' },
+  { id: 'reporte_mensual', nombre: 'Reporte de ingresos mensuales', desc: 'Aportaciones del mes por número de sobre y domingo (para publicar)' },
   { id: 'reportes', nombre: 'Demás reportes', desc: 'Recibos, informes de ingresos y egresos, anuales, proveedores…' },
   { id: 'catalogos', nombre: 'Catálogos', desc: 'Crear y modificar hermanos, proveedores, cuentas, grupos…' },
 ]

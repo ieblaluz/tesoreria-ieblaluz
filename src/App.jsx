@@ -49,7 +49,7 @@ const MENU = [
   { id: 'movimientos', label: 'Caja y banco', icono: 'movimientos', permiso: 'movimientos', C: Movimientos, color: '#2B6CB0', desc: 'Depósitos y reintegros' },
   { id: 'pagos', label: 'Calendario de pagos', icono: 'calendario', permiso: 'gastos', C: Pagos, color: '#B42318', desc: 'Pagos a proveedores y vencimientos' },
   { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', permiso: 'presupuesto', C: Presupuesto, color: '#0F766E', desc: 'Presupuestado frente a ejecutado' },
-  { id: 'reportes', label: 'Reportes', icono: 'reportes', permiso: ['reportes', 'reportes_tablon'], C: Reportes, color: '#4C51BF', desc: 'Tablón, recibos, informes y Excel' },
+  { id: 'reportes', label: 'Reportes', icono: 'reportes', permiso: ['reportes', 'reportes_tablon', 'reporte_mensual'], C: Reportes, color: '#4C51BF', desc: 'Tablón, recibos, informes y Excel' },
   { id: 'catalogos', label: 'Catálogos', icono: 'catalogos', permiso: 'catalogos', C: Catalogos, color: '#8B5E1A', desc: 'Hermanos, proveedores, cuentas…' },
   { id: 'usuarios', label: 'Usuarios', icono: 'usuarios', permiso: 'admin', C: Usuarios, cuenta: true, color: '#B83280', desc: 'Accesos, roles y permisos' },
   { id: 'configuracion', label: 'Configuración', icono: 'configuracion', permiso: 'admin', C: Configuracion, cuenta: true, color: '#475467', desc: 'Logos, colores y firmas' },
