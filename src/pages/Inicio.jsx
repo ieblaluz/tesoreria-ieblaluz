@@ -63,11 +63,7 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
   return (
     <section className="pagina inicio">
       <header className="inicio-cab">
-        <div>
-          <p className="inicio-saludo">{saludo()}, {primerNombre}</p>
-          <h1>{config?.nombre_app || 'Tesorería'}</h1>
-          <p className="tenue">{config?.nombre_iglesia}</p>
-        </div>
+        <h1 className="inicio-saludo">{saludo()}, {primerNombre}</h1>
         {saldos && (
           <div className="inicio-saldos">
             <div className="principal"><span>Saldo total</span><strong>{dinero(saldos.saldo_actual)}</strong></div>

@@ -10,7 +10,7 @@ const SECCIONES = [
     descripcion: 'Aportaciones de cada hermano en un periodo, con su total y la firma del tesorero.' },
   { id: 'ingresos-egresos', titulo: 'Informe de ingresos y egresos', icono: '⇅', permiso: 'reportes', C: InformeIngresosEgresos,
     descripcion: 'Ingresos por grupo y gastos por subcuenta de un periodo, separados por efectivo y banco, con saldos.' },
-  { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', permiso: 'reportes', C: IngresosMensuales,
+  { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', permiso: 'reporte_mensual', C: IngresosMensuales,
     descripcion: 'Aportaciones de un mes por número de sobre y domingo, sin nombres, para publicar.' },
   { id: 'anuales', titulo: 'Ingresos anuales', icono: '▥', permiso: 'reportes', C: IngresosAnuales,
     descripcion: 'Aportaciones de cada hermano mes a mes durante un año.' },
