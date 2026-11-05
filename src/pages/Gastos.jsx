@@ -22,7 +22,7 @@ export default function Gastos({ config, puede }) {
   const [subcuentas, setSubcuentas] = useState([])
   const [proveedores, setProveedores] = useState([])
   const [autorizadores, setAutorizadores] = useState([])
-  const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), cuenta: '', modalidad: '', estado: '', texto: '' })
+  const [f, setF] = useState({ desde: primerDiaMes(), hasta: hoy(), cuenta: '', modalidad: '', estado: '', criterio: 'pago', texto: '' })
   const [filas, setFilas] = useState(null)
   const [editando, setEditando] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -40,8 +40,11 @@ export default function Gastos({ config, puede }) {
     try {
       const datos = await traerTodo(() => {
         let q = supabase.from('v_gastos').select('*')
-        if (f.desde) q = q.gte('fecha', f.desde)
-        if (f.hasta) q = q.lte('fecha', f.hasta)
+        // Las fechas filtran por fecha de pago (lo habitual) o por fecha de factura.
+        // Las facturas pendientes no tienen fecha de pago, así que se filtran por su fecha.
+        const campo = f.criterio === 'pago' && f.estado !== 'pendiente' ? 'fecha_pago' : 'fecha'
+        if (f.desde) q = q.gte(campo, f.desde)
+        if (f.hasta) q = q.lte(campo, f.hasta)
         if (f.cuenta) q = q.eq('cuenta_id', f.cuenta)
         if (f.modalidad) q = q.eq('modalidad', f.modalidad)
         if (f.estado === 'pendiente') q = q.is('fecha_pago', null)
@@ -50,7 +53,7 @@ export default function Gastos({ config, puede }) {
       })
       setFilas(datos)
     } catch (e) { setMsg({ t: 'error', m: mensajeError(e) }) }
-  }, [f.desde, f.hasta, f.cuenta, f.modalidad, f.estado])
+  }, [f.desde, f.hasta, f.cuenta, f.modalidad, f.estado, f.criterio])
   useEffect(() => { cargar() }, [cargar])
 
   // Presupuesto de la subcuenta elegida en el año del gasto
@@ -140,6 +143,12 @@ export default function Gastos({ config, puede }) {
       {vista === 'analisis' ? <AnalisisGastos config={config} /> : (
         <div className="flex-resto">
       <div className="filtros">
+        <Campo etiqueta="Fechas por">
+          <select value={f.criterio} onChange={set('criterio')} disabled={f.estado === 'pendiente'}>
+            <option value="pago">Fecha de pago</option>
+            <option value="factura">Fecha de factura</option>
+          </select>
+        </Campo>
         <Campo etiqueta="Desde"><input type="date" value={f.desde} onChange={set('desde')} /></Campo>
         <Campo etiqueta="Hasta"><input type="date" value={f.hasta} onChange={set('hasta')} /></Campo>
         <Campo etiqueta="Cuenta">
@@ -157,11 +166,18 @@ export default function Gastos({ config, puede }) {
         <Campo etiqueta="Buscar"><input value={f.texto} onChange={set('texto')} placeholder="Concepto, proveedor…" /></Campo>
       </div>
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
+      <p className="tenue nota">
+        {f.estado === 'pendiente'
+          ? 'Las facturas pendientes no tienen fecha de pago, así que se filtran por la fecha de la factura.'
+          : f.criterio === 'pago'
+            ? 'Las fechas filtran por fecha de pago; las facturas aún sin pagar no aparecen (míralas con Estado: Pendientes de pago).'
+            : 'Las fechas filtran por la fecha de la factura, no por cuándo se pagó.'}
+      </p>
 
       {!filas ? <Cargando /> : (
         <div className="tabla-envoltura">
           <table className="tabla">
-            <thead><tr>{th('fecha', 'Factura')}{th('fecha_pago', 'Pago')}{th('subcuenta', 'Subcuenta')}{th('concepto', 'Concepto')}{th('proveedor', 'Proveedor')}{th('modalidad', 'Modalidad')}{th('monto', 'Monto', 'num')}</tr></thead>
+            <thead><tr>{th('fecha', f.criterio === 'factura' && f.estado !== 'pendiente' ? 'Factura ·' : 'Factura')}{th('fecha_pago', f.criterio === 'pago' && f.estado !== 'pendiente' ? 'Pago ·' : 'Pago')}{th('subcuenta', 'Subcuenta')}{th('concepto', 'Concepto')}{th('proveedor', 'Proveedor')}{th('modalidad', 'Modalidad')}{th('monto', 'Monto', 'num')}</tr></thead>
             <tbody>
               {ordenadas.map((x) => (
                 <tr key={x.id} className="clic" onClick={() => abrir(x)}>
