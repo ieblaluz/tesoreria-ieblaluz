@@ -31,6 +31,10 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
       supabase.from('gastos').select('id').is('fecha_pago', null)
         .then(({ data }) => setAvisos((a) => ({ ...a, gastos: data?.length || 0 })), () => {})
     }
+    if (puede('banco')) {
+      supabase.from('movimientos_banco').select('id').eq('estado', 'pendiente')
+        .then(({ data }) => setAvisos((a) => ({ ...a, banco: data?.length || 0 })), () => {})
+    }
     if (puede('presupuesto')) {
       supabase.from('v_presupuesto').select('id').eq('anio', new Date().getFullYear()).lt('diferencia', 0)
         .then(({ data }) => setAvisos((a) => ({ ...a, presupuesto: data?.length || 0 })), () => {})
@@ -40,6 +44,7 @@ export default function Inicio({ perfil, config, menu, ir, puede }) {
     if (id === 'gastos' && avisos.gastos) return `${avisos.gastos} por pagar`
     if (id === 'presupuesto' && avisos.presupuesto) return `${avisos.presupuesto} ${avisos.presupuesto === 1 ? 'subcuenta excedida' : 'subcuentas excedidas'}`
     if (id === 'caja' && conexion.pendientes) return `${conexion.pendientes} sin enviar`
+    if (id === 'banco' && avisos.banco) return `${avisos.banco} por conciliar`
     if (id === 'pagos' && avisos.pagos) return `${avisos.pagos} por atender`
     return null
   }
