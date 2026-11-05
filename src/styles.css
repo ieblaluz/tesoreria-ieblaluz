@@ -664,3 +664,21 @@ th.ordenable:hover { color: var(--primario); }
 .inicio .inicio-calendario { padding: 1rem 1.1rem; }
 .inicio .calendario.compacto .cal-celda { min-height: 38px; }
 .contenido:has(> .inicio) { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+
+/* ---------- Conciliación bancaria ---------- */
+.banco-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; padding: .85rem 1.1rem; margin-bottom: 1rem;
+  background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); }
+.banco-resumen > div { display: grid; gap: .1rem; }
+.banco-resumen span { font-size: .78rem; color: var(--tenue); font-weight: 600; }
+.banco-resumen strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.banco-resumen small { color: var(--tenue); font-size: .78rem; }
+.banco-resumen .espacio { flex: 1; }
+.tabla.banco td { vertical-align: top; }
+.tabla.banco .col-fecha { white-space: nowrap; width: 95px; }
+.tabla.banco .col-concepto { min-width: 220px; max-width: 360px; }
+.tabla.banco .col-destino { width: 42%; min-width: 300px; }
+.tabla.banco tr.registrado td, .tabla.banco tr.ignorado td { color: var(--tenue); }
+.banco-form { display: grid; gap: .4rem; }
+.banco-form select, .banco-form input { min-height: 34px; padding: .3rem .55rem; font-size: .9rem; }
+.banco-motivo { font-size: .8rem; font-weight: 700; color: var(--pos); }
+.tabla.banco .acciones .btn { padding: .35rem .8rem; min-height: 34px; }

@@ -20,6 +20,7 @@ const Perfil = lazy(() => import('./pages/Perfil'))
 const Reportes = lazy(() => import('./pages/Reportes'))
 const Movimientos = lazy(() => import('./pages/Movimientos'))
 const Pagos = lazy(() => import('./pages/Pagos'))
+const Banco = lazy(() => import('./pages/Banco'))
 
 // permiso: módulo de permisos necesario ('admin' = solo administrador; null = todos)
 // Descarga de antemano todas las pantallas para que también abran sin conexión
@@ -37,6 +38,7 @@ const PRECARGAR = [
   () => import('./pages/Reportes'),
   () => import('./pages/Movimientos'),
   () => import('./pages/Pagos'),
+  () => import('./pages/Banco'),
 ]
 
 // barra: aparece en la barra superior y en las pestañas del móvil · cuenta: en el menú de usuario
@@ -47,6 +49,7 @@ const MENU = [
   { id: 'ingresos', label: 'Ingresos', icono: 'ingresos', permiso: ['ingresos', 'ingresos_editar'], C: Ingresos, color: '#2F855A', desc: 'Registros y análisis' },
   { id: 'gastos', label: 'Gastos', icono: 'gastos', permiso: 'gastos', C: Gastos, color: '#C05621', desc: 'Registros y análisis' },
   { id: 'movimientos', label: 'Caja y banco', icono: 'movimientos', permiso: 'movimientos', C: Movimientos, color: '#2B6CB0', desc: 'Depósitos y reintegros' },
+  { id: 'banco', label: 'Conciliación bancaria', corto: 'Banco', icono: 'banco', permiso: 'banco', C: Banco, color: '#0E7490', desc: 'Importar el extracto y registrar sus movimientos' },
   { id: 'pagos', label: 'Calendario de pagos', icono: 'calendario', permiso: 'gastos', C: Pagos, color: '#B42318', desc: 'Pagos a proveedores y vencimientos' },
   { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', permiso: 'presupuesto', C: Presupuesto, color: '#0F766E', desc: 'Presupuestado frente a ejecutado' },
   { id: 'reportes', label: 'Reportes', icono: 'reportes', permiso: ['reportes', 'reportes_tablon', 'reporte_mensual'], C: Reportes, color: '#4C51BF', desc: 'Tablón, recibos, informes y Excel' },

@@ -6,6 +6,7 @@ export const PERMISOS = [
   { id: 'ingresos_editar', nombre: 'Editar ingresos', desc: 'Crear, corregir y borrar cualquier ingreso' },
   { id: 'gastos', nombre: 'Gastos', desc: 'Ver, registrar, editar y analizar gastos' },
   { id: 'movimientos', nombre: 'Caja y banco', desc: 'Registrar depósitos y reintegros' },
+  { id: 'banco', nombre: 'Conciliación bancaria', desc: 'Importar extractos del banco y registrar sus movimientos' },
   { id: 'presupuesto', nombre: 'Presupuesto', desc: 'Ver y modificar el presupuesto anual' },
   { id: 'reportes_tablon', nombre: 'Reporte del tablón', desc: 'Anotar quién contó e imprimir el reporte del culto' },
   { id: 'reporte_mensual', nombre: 'Reporte de ingresos mensuales', desc: 'Aportaciones del mes por número de sobre y domingo (para publicar)' },
