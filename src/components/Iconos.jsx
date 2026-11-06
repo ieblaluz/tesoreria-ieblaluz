@@ -17,6 +17,7 @@ const TRAZOS = {
   mas: <><circle cx="6" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="18" cy="12" r="1.2" /></>,
   salir: <><path d="M14 4.5h4a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-4" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h9" /></>,
   flecha: <path d="m9 6 6 6-6 6" />,
+  bitacora: <><path d="M6 3.5h9l3.5 3.5v13.5H6z" /><path d="M15 3.5V7h3.5" /><path d="M9 11h6M9 14.5h6M9 18h3" /></>,
   banco: <><path d="M3.5 9.5 12 4.5l8.5 5" /><path d="M5 9.5v8M9.5 9.5v8M14.5 9.5v8M19 9.5v8" /><path d="M3 20.5h18" /></>,
   calendario: <><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /><path d="M8 13h2M14 13h2M8 16.5h2" /></>,
   editar: <><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z" /><path d="m14.5 7.5 3 3" /></>,
