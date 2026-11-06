@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { supabase, dinero, hoy, fmtFecha, traerTodo, mensajeError } from '../supabase'
+import { supabase, dinero, hoy, fmtFecha, aNumero, traerTodo, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import Combobox from '../components/Combobox'
 import useConfirmar from '../components/Confirmar'
@@ -27,6 +27,7 @@ export default function Banco({ ir, puede }) {
   const [msg, setMsg] = useState(null)
   const [cargando, setCargando] = useState('')
   const [mapeo, setMapeo] = useState(null)           // archivo con columnas sin reconocer
+  const [reparto, setReparto] = useState(null)       // apunte que se reparte entre varias subcuentas
   const [confirmar, dialogo] = useConfirmar()
   const refArchivo = useRef(null)
 
@@ -195,6 +196,36 @@ export default function Banco({ ir, puede }) {
     if (data) setReglas((l) => [data, ...l.filter((r) => r.id !== data.id)])
   }
 
+  // ---------- Repartir un pago entre varias subcuentas ----------
+  function abrirReparto(m, p) {
+    setReparto({ m, fecha: p.fecha || m.fecha, lineas: [
+      { subcuenta_id: p.subcuenta_id || '', proveedor_id: p.proveedor_id || '', autorizador_id: p.autorizador_id || '',
+        concepto: m.concepto.slice(0, 120), factura: p.factura || '', monto: fmtMonto(Math.abs(m.importe)) },
+      { subcuenta_id: '', proveedor_id: p.proveedor_id || '', autorizador_id: p.autorizador_id || '', concepto: m.concepto.slice(0, 120), factura: '', monto: '' },
+    ] })
+  }
+  const cambiarLinea = (i, campos) => setReparto((r) => ({ ...r, lineas: r.lineas.map((l, j) => (j === i ? { ...l, ...campos } : l)) }))
+  const totalReparto = () => (reparto?.lineas || []).reduce((s, l) => s + (aNumero(l.monto) || 0), 0)
+
+  async function guardarReparto() {
+    const objetivo = Math.abs(Number(reparto.m.importe))
+    const lineas = reparto.lineas.filter((l) => l.subcuenta_id && aNumero(l.monto) > 0)
+    if (lineas.length < 2) return setMsg({ t: 'error', m: 'Añade al menos dos líneas con subcuenta y monto.' })
+    if (lineas.some((l) => !l.autorizador_id)) return setMsg({ t: 'error', m: 'Falta indicar quién autoriza en alguna línea.' })
+    const suma = Math.round(lineas.reduce((s, l) => s + aNumero(l.monto), 0) * 100) / 100
+    if (Math.abs(suma - objetivo) > 0.009) return setMsg({ t: 'error', m: `La suma de las líneas (${dinero(suma)}) no coincide con el importe del banco (${dinero(objetivo)}).` })
+    const ok = await confirmar({ titulo: `¿Registrar ${lineas.length} gastos?`, textoSi: 'Sí, registrar',
+      mensaje: <>Se repartirán <b>{dinero(objetivo)}</b> en {lineas.length} líneas, una por subcuenta, con fecha {fmtFecha(reparto.fecha)}.</> })
+    if (!ok) return
+    const { error } = await supabase.rpc('conciliar_gasto_dividido', {
+      p_id: reparto.m.id, p_fecha: reparto.fecha,
+      p_lineas: lineas.map((l) => ({ subcuenta_id: l.subcuenta_id, monto: Math.round(aNumero(l.monto) * 100) / 100,
+        concepto: l.concepto, proveedor_id: l.proveedor_id || null, autorizador_id: l.autorizador_id, factura: l.factura || null })),
+    })
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setReparto(null); setMsg({ t: 'ok', m: 'Gasto repartido y registrado.' }); cargar()
+  }
+
   async function conciliarUno(m) {
     const p = propuesta(m)
     if (!valido(m, p)) return setMsg({ t: 'error', m: 'Completa los datos que faltan antes de registrar este movimiento.' })
@@ -321,6 +352,9 @@ export default function Banco({ ir, puede }) {
                             </>
                           )}
                           {p.gastoExistente && <span className="tenue">Se marcará como pagada la factura ya registrada.</span>}
+                          {p.destino === 'gasto' && !p.gastoExistente && (
+                            <button type="button" className="btn-texto" onClick={() => abrirReparto(m, p)}>Repartir entre varias subcuentas…</button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -336,6 +370,44 @@ export default function Banco({ ir, puede }) {
           </table>
         </div>
       </div>
+
+      {reparto && (
+        <Modal titulo="Repartir el pago entre varias subcuentas" onCerrar={() => setReparto(null)} ancho="860px">
+          <p className="tenue modal-ayuda">{reparto.m.concepto} · <b>{dinero(Math.abs(reparto.m.importe))}</b> del {fmtFecha(reparto.m.fecha)}. Se creará un gasto por línea.</p>
+          <Campo etiqueta="Fecha de los gastos"><input type="date" value={reparto.fecha} onChange={(e) => setReparto({ ...reparto, fecha: e.target.value })} /></Campo>
+          <div className="reparto">
+            {reparto.lineas.map((l, i) => (
+              <div key={i} className="reparto-linea">
+                <Combobox valor={l.subcuenta_id} onCambio={(v) => cambiarLinea(i, { subcuenta_id: v })} placeholder="Subcuenta…"
+                  opciones={cat.subcuentas.filter((x) => x.activo || x.id === l.subcuenta_id).map((x) => {
+                    const c = cat.cuentas.find((y) => y.id === x.cuenta_id)
+                    return { id: x.id, etiqueta: `${x.nro} · ${x.nombre}`, detalle: c ? `${c.nro} · ${c.ministerio}` : '' }
+                  })} />
+                <input value={l.concepto} onChange={(e) => cambiarLinea(i, { concepto: e.target.value })} placeholder="Concepto de esta línea" />
+                <Combobox valor={l.autorizador_id} onCambio={(v) => cambiarLinea(i, { autorizador_id: v })} placeholder="Autoriza…"
+                  opciones={cat.autorizadores.filter((x) => x.activo || x.id === l.autorizador_id).map((x) => ({ id: x.id, etiqueta: x.nombre }))} />
+                <InputMonto grande={false} value={l.monto} onChange={(v) => cambiarLinea(i, { monto: v })} />
+                <button type="button" className="btn-icono" aria-label="Quitar línea"
+                  onClick={() => setReparto({ ...reparto, lineas: reparto.lineas.filter((_, j) => j !== i) })}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div className="reparto-pie">
+            <button type="button" className="btn btn-suave" onClick={() => setReparto({ ...reparto, lineas: [...reparto.lineas, { subcuenta_id: '', proveedor_id: '', autorizador_id: reparto.lineas[0]?.autorizador_id || '', concepto: reparto.m.concepto.slice(0, 120), factura: '', monto: '' }] })}>+ Añadir línea</button>
+            <span className="espacio" />
+            <span className="reparto-total">
+              Repartido <b>{dinero(totalReparto())}</b> de {dinero(Math.abs(reparto.m.importe))}
+              {(() => { const falta = Math.round((Math.abs(reparto.m.importe) - totalReparto()) * 100) / 100
+                return falta === 0 ? <b className="pos"> · cuadra</b> : <b className="neg"> · {falta > 0 ? `faltan ${dinero(falta)}` : `sobran ${dinero(-falta)}`}</b> })()}
+            </span>
+          </div>
+          <div className="botonera">
+            <span className="espacio" />
+            <button className="btn btn-suave" onClick={() => setReparto(null)}>Cancelar</button>
+            <button className="btn btn-primario" onClick={guardarReparto}>Registrar los gastos</button>
+          </div>
+        </Modal>
+      )}
 
       {mapeo && (
         <Modal titulo="Indica qué contiene cada columna" onCerrar={() => setMapeo(null)} ancho="760px">
