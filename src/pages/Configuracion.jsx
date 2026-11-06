@@ -40,6 +40,7 @@ export default function Configuracion({ config, recargarConfig }) {
     color_primario: config?.color_primario || '#1F3A5F', moneda: config?.moneda || 'EUR',
     contador_borra_mismo_dia: config?.contador_borra_mismo_dia ?? true,
     minutos_bloqueo: config?.minutos_bloqueo || 30,
+    bitacora_meses: config?.bitacora_meses ?? 36,
     tesorero_nombre: config?.tesorero_nombre || '',
     logo_reporte_alto: config?.logo_reporte_alto || 60,
     reporte_mostrar_nombre: config?.reporte_mostrar_nombre ?? true,
@@ -51,7 +52,19 @@ export default function Configuracion({ config, recargarConfig }) {
   const [respaldando, setRespaldando] = useState('')
   const [pin, setPin] = useState({ actual: '', nuevo: '', repite: '' })
   const [pinExiste, setPinExiste] = useState(null)
-  useEffect(() => { supabase.rpc('pin_configurado').then(({ data }) => setPinExiste(!!data)) }, [])
+  const [bitacora, setBitacora] = useState(null)
+  useEffect(() => {
+    supabase.rpc('pin_configurado').then(({ data }) => setPinExiste(!!data))
+    supabase.rpc('bitacora_estado').then(({ data }) => setBitacora(data))
+  }, [])
+
+  async function limpiarAhora() {
+    const { data, error } = await supabase.rpc('limpiar_bitacora')
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setMsg({ t: 'ok', m: data ? `Se eliminaron ${data} apuntes antiguos de la bitácora.` : 'No había nada antiguo que eliminar.' })
+    const { data: estado } = await supabase.rpc('bitacora_estado')
+    setBitacora(estado)
+  }
 
   async function guardarPin(e) {
     e.preventDefault()
@@ -73,7 +86,7 @@ export default function Configuracion({ config, recargarConfig }) {
 
   async function guardar(e) {
     e?.preventDefault()
-    const datos = { ...form, minutos_bloqueo: Number(form.minutos_bloqueo), logo_reporte_alto: Number(form.logo_reporte_alto), tesorero_nombre: form.tesorero_nombre.trim() || null,
+    const datos = { ...form, minutos_bloqueo: Number(form.minutos_bloqueo), bitacora_meses: Number(form.bitacora_meses), logo_reporte_alto: Number(form.logo_reporte_alto), tesorero_nombre: form.tesorero_nombre.trim() || null,
       actualizado_en: new Date().toISOString() }
     const { error } = await supabase.from('configuracion').update(datos).eq('id', 1)
     if (error) return setMsg({ t: 'error', m: mensajeError(error) })
@@ -152,6 +165,39 @@ export default function Configuracion({ config, recargarConfig }) {
         <Campo etiqueta="Repite el PIN"><input type="password" inputMode="numeric" autoComplete="new-password" value={pin.repite} onChange={soloNumeros('repite')} /></Campo>
         <div className="botonera"><span className="espacio" /><button className="btn btn-primario">{pinExiste ? 'Cambiar PIN' : 'Crear PIN'}</button></div>
       </form>
+
+      {bitacora && (
+        <div className="panel formulario">
+          <h2 className="campo-completo">Bitácora: cuánto se conserva</h2>
+          <p className="tenue campo-completo" style={{ margin: 0 }}>
+            La bitácora antigua se borra sola: el servidor la revisa cada mes y, además, se comprueba al entrar en la app.
+            Esto no afecta a los datos de la tesorería, solo al registro de quién hizo cada cambio.
+          </p>
+          <Campo etiqueta="Conservar la bitácora durante">
+            <select value={form.bitacora_meses} onChange={set('bitacora_meses')}>
+              {[[12, '1 año'], [24, '2 años'], [36, '3 años (recomendado)'], [60, '5 años'], [0, 'Siempre (no borrar nada)']].map(([v, l]) =>
+                <option key={v} value={v}>{l}</option>)}
+            </select>
+          </Campo>
+          <div className="campo">
+            <span className="campo-etiqueta">Estado actual</span>
+            <div className="bitacora-estado">
+              <span><b>{Number(bitacora.apuntes || 0).toLocaleString('es-ES')}</b> apuntes · {bitacora.tamano}</span>
+              {bitacora.desde && <span>Desde el {new Date(bitacora.desde).toLocaleDateString('es-ES')}</span>}
+              <span>{bitacora.ultima_limpieza
+                ? `Última limpieza: ${new Date(bitacora.ultima_limpieza).toLocaleDateString('es-ES')}`
+                : 'Todavía no se ha hecho ninguna limpieza.'}</span>
+            </div>
+          </div>
+          {Number(bitacora.a_borrar) > 0 && (
+            <div className="campo-completo">
+              <p className="tenue" style={{ margin: '0 0 .5rem' }}>Hay <b>{Number(bitacora.a_borrar).toLocaleString('es-ES')}</b> apuntes más antiguos que el periodo elegido. Se borrarán solos, o puedes hacerlo ahora.</p>
+              <button type="button" className="btn btn-suave" onClick={limpiarAhora}>Limpiar ahora</button>
+            </div>
+          )}
+          <div className="botonera"><span className="espacio" /><button className="btn btn-primario" onClick={guardar}>Guardar</button></div>
+        </div>
+      )}
 
       <div className="panel">
         <h2>Copia de seguridad</h2>
