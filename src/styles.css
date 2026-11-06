@@ -682,3 +682,13 @@ th.ordenable:hover { color: var(--primario); }
 .banco-form select, .banco-form input { min-height: 34px; padding: .3rem .55rem; font-size: .9rem; }
 .banco-motivo { font-size: .8rem; font-weight: 700; color: var(--pos); }
 .tabla.banco .acciones .btn { padding: .35rem .8rem; min-height: 34px; }
+
+/* ---------- Bitácora ---------- */
+.etiqueta-op { font-size: .78rem; font-weight: 700; padding: .1rem .55rem; border-radius: 999px; white-space: nowrap; }
+.etiqueta-op.crear { background: #E7F4EC; color: #17553A; }
+.etiqueta-op.modificar { background: #FEF3E2; color: #8A4B08; }
+.etiqueta-op.eliminar { background: #FDECEA; color: #B42318; }
+.tabla.bitacora .col-fecha { white-space: nowrap; width: 135px; }
+.tabla.bitacora .col-cambios { color: var(--tenue); font-size: .88rem; }
+.tabla td.antes { color: var(--neg); text-decoration: line-through; }
+.tabla td.despues { color: var(--pos); font-weight: 600; }

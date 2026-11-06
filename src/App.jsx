@@ -21,6 +21,7 @@ const Reportes = lazy(() => import('./pages/Reportes'))
 const Movimientos = lazy(() => import('./pages/Movimientos'))
 const Pagos = lazy(() => import('./pages/Pagos'))
 const Banco = lazy(() => import('./pages/Banco'))
+const Bitacora = lazy(() => import('./pages/Bitacora'))
 
 // permiso: módulo de permisos necesario ('admin' = solo administrador; null = todos)
 // Descarga de antemano todas las pantallas para que también abran sin conexión
@@ -39,6 +40,7 @@ const PRECARGAR = [
   () => import('./pages/Movimientos'),
   () => import('./pages/Pagos'),
   () => import('./pages/Banco'),
+  () => import('./pages/Bitacora'),
 ]
 
 // barra: aparece en la barra superior y en las pestañas del móvil · cuenta: en el menú de usuario
@@ -54,6 +56,7 @@ const MENU = [
   { id: 'presupuesto', label: 'Presupuesto', icono: 'presupuesto', permiso: 'presupuesto', C: Presupuesto, color: '#0F766E', desc: 'Presupuestado frente a ejecutado' },
   { id: 'reportes', label: 'Reportes', icono: 'reportes', permiso: ['reportes', 'reportes_tablon', 'reporte_mensual'], C: Reportes, color: '#4C51BF', desc: 'Tablón, recibos, informes y Excel' },
   { id: 'catalogos', label: 'Catálogos', icono: 'catalogos', permiso: 'catalogos', C: Catalogos, color: '#8B5E1A', desc: 'Hermanos, proveedores, cuentas…' },
+  { id: 'bitacora', label: 'Bitácora', icono: 'bitacora', permiso: 'bitacora', C: Bitacora, color: '#475467', desc: 'Quién hizo cada cambio y cuándo' },
   { id: 'usuarios', label: 'Usuarios', icono: 'usuarios', permiso: 'admin', C: Usuarios, cuenta: true, color: '#B83280', desc: 'Accesos, roles y permisos' },
   { id: 'configuracion', label: 'Configuración', icono: 'configuracion', permiso: 'admin', C: Configuracion, cuenta: true, color: '#475467', desc: 'Logos, colores y firmas' },
   { id: 'perfil', label: 'Mi perfil', icono: 'perfil', permiso: null, C: Perfil, cuenta: true, color: '#2C7A7B', desc: 'Tus datos y tu clave' },

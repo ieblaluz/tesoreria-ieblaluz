@@ -11,5 +11,6 @@ export const PERMISOS = [
   { id: 'reportes_tablon', nombre: 'Reporte del tablón', desc: 'Anotar quién contó e imprimir el reporte del culto' },
   { id: 'reporte_mensual', nombre: 'Reporte de ingresos mensuales', desc: 'Aportaciones del mes por número de sobre y domingo (para publicar)' },
   { id: 'reportes', nombre: 'Demás reportes', desc: 'Recibos, informes de ingresos y egresos, anuales, proveedores…' },
+  { id: 'bitacora', nombre: 'Bitácora', desc: 'Ver quién creó, modificó o eliminó cada dato y cuándo' },
   { id: 'catalogos', nombre: 'Catálogos', desc: 'Crear y modificar hermanos, proveedores, cuentas, grupos…' },
 ]
