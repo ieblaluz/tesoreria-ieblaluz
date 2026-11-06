@@ -25,9 +25,10 @@ const gastosPagadosDe = (desde, hasta) => traerTodo(() => supabase.from('v_gasto
   .select('id,fecha,fecha_pago,modalidad,monto,subcuenta,nro_subcuenta')
   .gte('fecha_pago', desde).lte('fecha_pago', hasta).order('id'))
 
-const gastosDe = (desde, hasta) => traerTodo(() => supabase.from('v_gastos')
-  .select('id,fecha,mes,trimestre,modalidad,monto,factura,concepto,subcuenta_id,nro_subcuenta,subcuenta,nro_cuenta,ministerio,proveedor_id,proveedor,cif_nie')
-  .gte('fecha', desde).lte('fecha', hasta).order('id'))
+const gastosDe = (desde, hasta, porPago) => traerTodo(() => supabase.from('v_gastos')
+  .select('id,fecha,fecha_pago,mes,trimestre,modalidad,monto,factura,concepto,subcuenta_id,nro_subcuenta,subcuenta,nro_cuenta,ministerio,proveedor_id,proveedor,cif_nie')
+  .gte(porPago ? 'fecha_pago' : 'fecha', desde).lte(porPago ? 'fecha_pago' : 'fecha', hasta).order('id'))
+const trimestreDe = (f) => Math.floor((Number(String(f).slice(5, 7)) - 1) / 3)
 
 function SelectorAnio({ valor, onCambio, etiqueta = 'Año' }) {
   const anios = []
@@ -311,48 +312,67 @@ const TRIM = ['I', 'II', 'III', 'IV']
 
 export function ProveedoresTrimestral({ config }) {
   const proveedores = useCatalogo('proveedores', 'id,nombre,cif_nie', 'nombre')
-  const [f, setF] = useState({ anio: ANIO, proveedores: [], min: '', max: '', trimestres: [] })
+  const [f, setF] = useState({ anio: ANIO, proveedores: [], min: '', max: '', trimestres: [], criterio: 'factura', ver: [] })
 
   async function construir() {
-    const gas = (await gastosDe(`${f.anio}-01-01`, `${f.anio}-12-31`)).filter((x) => x.proveedor_id)
+    const porPago = f.criterio === 'pago'
+    const gas = (await gastosDe(`${f.anio}-01-01`, `${f.anio}-12-31`, porPago)).filter((x) => x.proveedor_id)
+    const cols = f.ver.length ? [...f.ver].sort() : [0, 1, 2, 3]
     const m = new Map()
     for (const x of gas) {
       if (!m.has(x.proveedor_id)) m.set(x.proveedor_id, { id: x.proveedor_id, cif: x.cif_nie || '', nombre: x.proveedor, t: [0, 0, 0, 0] })
-      m.get(x.proveedor_id).t[x.trimestre - 1] += Number(x.monto)
+      m.get(x.proveedor_id).t[trimestreDe(porPago ? x.fecha_pago : x.fecha)] += Number(x.monto)
     }
     const min = f.min === '' ? null : Number(String(f.min).replace(',', '.'))
     const max = f.max === '' ? null : Number(String(f.max).replace(',', '.'))
     const filas = [...m.values()]
       .filter((p) => !f.proveedores.length || f.proveedores.includes(p.id))
-      .filter((p) => { const t = suma(p.t); return (min == null || t >= min) && (max == null || t <= max) })
       .filter((p) => f.trimestres.every((i) => p.t[i] > 0))
+      .filter((p) => suma(cols.map((i) => p.t[i])) !== 0 || cols.length === 4)
+      .filter((p) => { const t = suma(cols.map((i) => p.t[i])); return (min == null || t >= min) && (max == null || t <= max) })
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-    const tot = [0, 1, 2, 3].map((i) => suma(filas.map((p) => p.t[i])))
-    const meta = [['Año', String(f.anio)]]
+    const tot = cols.map((i) => suma(filas.map((p) => p.t[i])))
+    const meta = [['Año', String(f.anio)], ['Fechas por', porPago ? 'Fecha de pago' : 'Fecha de factura']]
+    if (cols.length < 4) meta.push(['Trimestres', cols.map((i) => TRIM[i]).join(', ')])
     if (f.proveedores.length) meta.push(['Proveedores', `${f.proveedores.length} seleccionados`])
     if (min != null || max != null) meta.push(['Total entre', `${min ?? 0} € y ${max ?? '…'} €`])
     if (f.trimestres.length) meta.push(['Con gasto en', f.trimestres.map((i) => `${TRIM[i]} trim.`).join(', ')])
     return {
-      titulo: 'Proveedores trimestral', hoja: `Proveedores ${f.anio}`, horizontal: true,
-      archivo: nombreReporte(`Proveedores Trimestral ${f.anio}`),
+      titulo: cols.length === 1 ? `Proveedores · ${TRIM[cols[0]]} trimestre` : 'Proveedores trimestral',
+      hoja: `Proveedores ${f.anio}`, horizontal: cols.length > 2,
+      archivo: nombreReporte(`Proveedores ${cols.length === 4 ? 'Trimestral' : cols.map((i) => TRIM[i]).join('-') + ' Trim'} ${f.anio}`),
       meta,
       tablas: [{
         columnas: [{ t: 'CIF/NIE', ancho: 14 }, { t: 'Proveedor', ancho: 42 },
-          { t: 'I trimestre', tipo: 'dinero' }, { t: 'II trimestre', tipo: 'dinero' }, { t: 'III trimestre', tipo: 'dinero' },
-          { t: 'IV trimestre', tipo: 'dinero' }, { t: 'Total', tipo: 'dinero' }],
+          ...cols.map((i) => ({ t: `${TRIM[i]} trimestre`, tipo: 'dinero' })),
+          ...(cols.length > 1 ? [{ t: 'Total', tipo: 'dinero' }] : [])],
         vacio: 'No hay proveedores con estos filtros.',
         filas: [
-          ...filas.map((p) => ({ celdas: [p.cif, p.nombre, ...p.t.map(r2), r2(suma(p.t))] })),
-          { celdas: ['Totales', '', ...tot.map(r2), r2(suma(tot))], tipo: 'total' },
+          ...filas.map((p) => ({ celdas: [p.cif, p.nombre, ...cols.map((i) => r2(p.t[i])), ...(cols.length > 1 ? [r2(suma(cols.map((i) => p.t[i])))] : [])] })),
+          { celdas: ['Totales', '', ...tot.map(r2), ...(cols.length > 1 ? [r2(suma(tot))] : [])], tipo: 'total' },
         ],
       }],
     }
   }
 
-  const alternarTrim = (i) => setF({ ...f, trimestres: f.trimestres.includes(i) ? f.trimestres.filter((x) => x !== i) : [...f.trimestres, i].sort() })
+  const alternar = (campo, i) => setF({ ...f, [campo]: f[campo].includes(i) ? f[campo].filter((x) => x !== i) : [...f[campo], i].sort() })
   return (
-    <SeccionReporte construir={construir} config={config} nota="Incluye solo los gastos que tienen proveedor asignado. El rango de montos se aplica al total del año.">
+    <SeccionReporte construir={construir} config={config}
+      nota="Incluye solo los gastos con proveedor asignado. El rango de montos se aplica al total de los trimestres mostrados.">
       <SelectorAnio valor={f.anio} onCambio={(v) => setF({ ...f, anio: v })} />
+      <Campo etiqueta="Fechas por">
+        <select value={f.criterio} onChange={(e) => setF({ ...f, criterio: e.target.value })}>
+          <option value="factura">Fecha de factura</option>
+          <option value="pago">Fecha de pago</option>
+        </select>
+      </Campo>
+      <div className="campo">
+        <span className="campo-etiqueta">Trimestres a mostrar</span>
+        <div className="segmentos">
+          <button type="button" className={!f.ver.length ? 'sel' : ''} onClick={() => setF({ ...f, ver: [] })}>Todos</button>
+          {TRIM.map((t, i) => <button key={t} type="button" className={f.ver.includes(i) ? 'sel' : ''} onClick={() => alternar('ver', i)}>{t}</button>)}
+        </div>
+      </div>
       <Campo etiqueta="Proveedores (nombre o CIF/NIE)">
         <MultiSelect opciones={proveedores.map((p) => ({ id: p.id, etiqueta: `${p.nombre}${p.cif_nie ? ' · ' + p.cif_nie : ''}` }))}
           seleccion={f.proveedores} onCambio={(v) => setF({ ...f, proveedores: v })} etiquetaTodas="Todos" />
@@ -360,9 +380,9 @@ export function ProveedoresTrimestral({ config }) {
       <Campo etiqueta="Total desde (€)"><input inputMode="decimal" value={f.min} onChange={(e) => setF({ ...f, min: e.target.value })} placeholder="0" /></Campo>
       <Campo etiqueta="Total hasta (€)"><input inputMode="decimal" value={f.max} onChange={(e) => setF({ ...f, max: e.target.value })} placeholder="Sin límite" /></Campo>
       <div className="campo">
-        <span className="campo-etiqueta">Con gasto en el trimestre</span>
+        <span className="campo-etiqueta">Solo si tuvo gasto en</span>
         <div className="segmentos">
-          {TRIM.map((t, i) => <button key={t} type="button" className={f.trimestres.includes(i) ? 'sel' : ''} onClick={() => alternarTrim(i)}>{t}</button>)}
+          {TRIM.map((t, i) => <button key={t} type="button" className={f.trimestres.includes(i) ? 'sel' : ''} onClick={() => alternar('trimestres', i)}>{t}</button>)}
         </div>
       </div>
     </SeccionReporte>
