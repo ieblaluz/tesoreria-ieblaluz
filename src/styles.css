@@ -692,3 +692,5 @@ th.ordenable:hover { color: var(--primario); }
 .tabla.bitacora .col-cambios { color: var(--tenue); font-size: .88rem; }
 .tabla td.antes { color: var(--neg); text-decoration: line-through; }
 .tabla td.despues { color: var(--pos); font-weight: 600; }
+.bitacora-estado { display: grid; gap: .15rem; font-size: .9rem; color: var(--tenue); min-height: 40px; }
+.bitacora-estado b { color: var(--tinta); }

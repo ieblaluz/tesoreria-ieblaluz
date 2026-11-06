@@ -112,6 +112,13 @@ export default function App() {
   // Sin conexión: envío automático de lo pendiente
   useEffect(() => { iniciarSincronizacion() }, [])
 
+  // Limpieza automática de la bitácora antigua (el servidor también la hace cada mes)
+  useEffect(() => {
+    if (!perfil) return
+    const t = setTimeout(() => { supabase.rpc('limpiar_bitacora_si_toca').then(() => {}, () => {}) }, 4000)
+    return () => clearTimeout(t)
+  }, [perfil])
+
   // Botón "atrás" del navegador o del móvil: vuelve a la pantalla anterior
   useEffect(() => {
     const alVolver = () => { setRuta(leerRuta()); setMasAbierto(false); setUsuarioAbierto(false) }
