@@ -110,7 +110,7 @@ export function TablasModelo({ modelo }) {
 
 function TablaModelo({ t, k, modelo }) {
   return (
-    <section key={k} className={'doc-seccion doc-modelo' + (modelo.compacto ? ' doc-compacto' : '') + (t.estrecha ? ' doc-estrecha' : '')}>
+    <section key={k} className={'doc-seccion doc-modelo' + (modelo.compacto ? ' doc-compacto' : '') + (t.estrecha ? ' doc-estrecha' : '') + (modelo.clase ? ' ' + modelo.clase : '')}>
       {t.subtitulo && <h2 className="doc-subtitulo">{t.subtitulo}</h2>}
       {modelo.compacto && k === 0 && <p className="doc-unidad">Importes en euros</p>}
       <table className="doc-tabla">
