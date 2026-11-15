@@ -221,6 +221,79 @@ export function IngresosMensuales({ config }) {
   )
 }
 
+// ---------- Kárdex mensual (hoja en blanco para el conteo) ----------
+const PUESTOS = [50, 75, 100, 125, 150]
+
+export function KardexMensual({ config }) {
+  const hoyD = new Date()
+  const [f, setF] = useState({ anio: hoyD.getFullYear(), mes: hoyD.getMonth() + 1, puestos: 100, turnos: true, soloActivos: true })
+
+  async function construir() {
+    const ultimo = new Date(f.anio, f.mes, 0).getDate()
+    const domingos = []
+    for (let d = 1; d <= ultimo; d++) {
+      const dt = new Date(f.anio, f.mes - 1, d)
+      if (dt.getDay() === 0) domingos.push(dt)
+    }
+    const { data: hs, error } = await supabase.from('hermanos').select('nro_sobre,nombre,apellidos,activo').order('nro_sobre')
+    if (error) throw error
+    const porSobre = new Map((hs || [])
+      .filter((h) => (f.soloActivos ? h.activo : true))
+      .map((h) => [Number(h.nro_sobre), `${h.nombre} ${h.apellidos || ''}`.trim()]))
+
+    const turnos = f.turnos ? ['Mañana', 'Tarde'] : ['']
+    const columnas = [
+      { t: 'N.º', ancho: 5 },
+      { t: 'Nombre y apellidos', ancho: 34 },
+      ...domingos.flatMap((d) => turnos.map((turno) => ({
+        t: `${pad(d.getDate())}/${pad(f.mes)}${turno ? '\n' + turno : ''}`, tipo: 'dinero', ancho: 10,
+      }))),
+      { t: 'Total', tipo: 'dinero', ancho: 11 },
+    ]
+    // Todas las casillas de importe van vacías: la hoja se rellena a mano
+    const vacias = Array(domingos.length * turnos.length + 1).fill('')
+
+    const filas = []
+    for (let n = 1; n <= Number(f.puestos); n++) filas.push({ celdas: [String(n), porSobre.get(n) || '', ...vacias] })
+    filas.push({ celdas: ['', 'TOTAL DEL DÍA', ...vacias], tipo: 'total' })
+
+    const nombreMes = MESES_LARGOS[f.mes - 1]
+    return {
+      titulo: 'Kárdex de ingresos', hoja: `Kardex ${nombreMes} ${f.anio}`,
+      clase: 'doc-kardex', compacto: true, horizontal: domingos.length * turnos.length > 6,
+      archivo: nombreReporte(`Kardex ${nombreMes}`, `${f.anio}-${pad(f.mes)}-01`),
+      meta: [['Mes', `${nombreMes.toUpperCase()} ${f.anio}`], ['Domingos', String(domingos.length)]],
+      tablas: [{ columnas, filas, vacio: 'No hay sobres que mostrar.' }],
+      pie: 'Hoja de conteo: anote el importe de cada sobre en la casilla del culto correspondiente.',
+    }
+  }
+
+  return (
+    <SeccionReporte construir={construir} config={config}
+      nota="Hoja en blanco para el conteo: solo se imprimen los números de sobre, el nombre de quien lo tiene asignado y los domingos del mes elegido. Los importes se anotan a mano.">
+      <SelectorAnio valor={f.anio} onCambio={(v) => setF({ ...f, anio: v })} />
+      <Campo etiqueta="Mes">
+        <select value={f.mes} onChange={(e) => setF({ ...f, mes: Number(e.target.value) })}>
+          {MESES_LARGOS.map((n, i) => <option key={n} value={i + 1}>{n}</option>)}
+        </select>
+      </Campo>
+      <Campo etiqueta="Puestos (números de sobre)">
+        <select value={f.puestos} onChange={(e) => setF({ ...f, puestos: Number(e.target.value) })}>
+          {PUESTOS.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </Campo>
+      <label className="check campo-check">
+        <input type="checkbox" checked={f.turnos} onChange={(e) => setF({ ...f, turnos: e.target.checked })} />
+        Dividir cada domingo en mañana y tarde
+      </label>
+      <label className="check campo-check">
+        <input type="checkbox" checked={f.soloActivos} onChange={(e) => setF({ ...f, soloActivos: e.target.checked })} />
+        Solo hermanos activos
+      </label>
+    </SeccionReporte>
+  )
+}
+
 // ---------- Ingresos anuales (por hermano y mes) ----------
 export function IngresosAnuales({ config }) {
   const grupos = useGrupos()

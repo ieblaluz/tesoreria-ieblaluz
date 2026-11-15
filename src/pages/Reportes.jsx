@@ -1,6 +1,6 @@
 import Tablon from './Tablon'
 import Recibos from './Recibos'
-import { InformeIngresosEgresos, IngresosMensuales, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, ReporteProveedor, PresupuestoAnual } from './ReportesFinancieros'
+import { InformeIngresosEgresos, IngresosMensuales, KardexMensual, IngresosAnuales, IngresosTresAnios, ProveedoresTrimestral, ReporteProveedor, PresupuestoAnual } from './ReportesFinancieros'
 
 // Catálogo de reportes. Para añadir uno nuevo basta con sumarlo a esta lista.
 const SECCIONES = [
@@ -12,6 +12,8 @@ const SECCIONES = [
     descripcion: 'Ingresos por grupo y gastos por subcuenta de un periodo, separados por efectivo y banco, con saldos.' },
   { id: 'mensuales', titulo: 'Ingresos mensuales', icono: '▦', permiso: 'reporte_mensual', C: IngresosMensuales,
     descripcion: 'Aportaciones de un mes por número de sobre y domingo, sin nombres, para publicar.' },
+  { id: 'kardex', titulo: 'Kárdex mensual', icono: '▤', permiso: 'reporte_mensual', C: KardexMensual,
+    descripcion: 'Hoja en blanco con los sobres y los domingos del mes, para anotar a mano durante el conteo.' },
   { id: 'anuales', titulo: 'Ingresos anuales', icono: '▥', permiso: 'reportes', C: IngresosAnuales,
     descripcion: 'Aportaciones de cada hermano mes a mes durante un año.' },
   { id: 'tres-anios', titulo: 'Ingresos de los últimos 3 años', icono: '▧', permiso: 'reportes', C: IngresosTresAnios,
