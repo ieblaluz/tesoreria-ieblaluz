@@ -703,3 +703,20 @@ th.ordenable:hover { color: var(--primario); }
 .reparto-pie .espacio { flex: 1; }
 .reparto-total { font-size: .92rem; color: var(--tenue); }
 @media (max-width: 760px) { .reparto-linea { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- Kárdex mensual (hoja en blanco para el conteo) ---------- */
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 8.4px; border: 0.6px solid #98A2B3; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla th,
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 1px 3px; border: 0.6px solid #98A2B3; line-height: 1.25; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { background: #F2F4F7; color: #101828; text-align: center; font-weight: 700; font-size: 8px; vertical-align: middle; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 13px; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla td:first-child { text-align: center; width: 22px; color: #475467; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla .fila-total td { font-weight: 700; background: #F2F4F7; border-top: 1px solid #101828; }
+.doc-kardex .doc-unidad { display: none; }
+@media print {
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 7pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla th,
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 0.5pt 2pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 11pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { font-size: 6.6pt; }
+}
