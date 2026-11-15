@@ -705,18 +705,20 @@ th.ordenable:hover { color: var(--primario); }
 @media (max-width: 760px) { .reparto-linea { grid-template-columns: 1fr 1fr; } }
 
 /* ---------- Kárdex mensual (hoja en blanco para el conteo) ---------- */
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 8.4px; border: 0.6px solid #98A2B3; }
+/* Pensado para A4 vertical: 50 filas por cara, las 100 en una hoja por las dos caras */
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 9px; border: 1px solid #475467; }
 .doc-seccion.doc-modelo.doc-kardex .doc-tabla th,
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 1px 3px; border: 0.6px solid #98A2B3; line-height: 1.25; }
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { background: #F2F4F7; color: #101828; text-align: center; font-weight: 700; font-size: 8px; vertical-align: middle; }
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 13px; }
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla td:first-child { text-align: center; width: 22px; color: #475467; }
-.doc-seccion.doc-modelo.doc-kardex .doc-tabla .fila-total td { font-weight: 700; background: #F2F4F7; border-top: 1px solid #101828; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 0 3px; border: 1px solid #667085; line-height: 1.2; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { background: #F2F4F7; color: #101828; text-align: center; font-weight: 700; font-size: 8.5px; padding: 3px 2px; vertical-align: middle; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 14px; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla td:first-child { text-align: center; width: 20px; color: #475467; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla td:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.doc-seccion.doc-modelo.doc-kardex .doc-tabla .fila-total td { font-weight: 700; background: #F2F4F7; border-top: 1.5px solid #101828; }
 .doc-kardex .doc-unidad { display: none; }
 @media print {
-  .doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 7pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla { font-size: 7.4pt; }
   .doc-seccion.doc-modelo.doc-kardex .doc-tabla th,
-  .doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 0.5pt 2pt; }
-  .doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 11pt; }
-  .doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { font-size: 6.6pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla td { padding: 0 2pt; border: 0.9pt solid #667085; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { font-size: 6.8pt; padding: 2pt 1pt; }
+  .doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 11.6pt; }
 }
