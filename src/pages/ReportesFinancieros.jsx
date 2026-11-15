@@ -260,7 +260,7 @@ export function KardexMensual({ config }) {
     const nombreMes = MESES_LARGOS[f.mes - 1]
     return {
       titulo: 'Kárdex de ingresos', hoja: `Kardex ${nombreMes} ${f.anio}`,
-      clase: 'doc-kardex', compacto: true, horizontal: domingos.length * turnos.length > 6,
+      clase: 'doc-kardex', compacto: true, horizontal: false,
       archivo: nombreReporte(`Kardex ${nombreMes}`, `${f.anio}-${pad(f.mes)}-01`),
       meta: [['Mes', `${nombreMes.toUpperCase()} ${f.anio}`], ['Domingos', String(domingos.length)]],
       tablas: [{ columnas, filas, vacio: 'No hay sobres que mostrar.' }],
