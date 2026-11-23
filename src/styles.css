@@ -730,12 +730,17 @@ th.ordenable:hover { color: var(--primario); }
 .copia-tabla { max-height: 46vh; overflow: auto; }
 .copia-tabla thead th { position: sticky; top: 0; z-index: 1; background: var(--papel, #fff); }
 .copia-tabla .col-check { width: 34px; text-align: center; }
-.copia-tabla .col-importe { width: 150px; }
-.copia-tabla .col-importe input { text-align: right; min-height: 34px; padding: .25rem .5rem; }
+.copia-tabla .col-importe { width: 190px; }
+/* El campo de importe usa la caja grande de la caja registradora: aquí se reduce
+   para que el número no se salga ni se pegue al símbolo del euro */
+.copia-tabla .col-importe input { font-size: 1.05rem; font-weight: 700; min-height: 38px;
+  text-align: right; padding: .3rem 1.9rem .3rem .5rem; }
+.copia-tabla .col-importe .monto-euro { right: .6rem; font-size: .95rem; }
 .copia-tabla tr.fila-apagada td { color: var(--tenue); }
 .bloque { display: block; font-size: .8rem; }
 @media (max-width: 760px) {
   .copia-mandos .campo { min-width: 0; flex: 1 1 130px; }
   .copia-tabla { max-height: 50vh; }
-  .copia-tabla .col-importe { width: 110px; }
+  .copia-tabla .col-importe { width: 140px; }
+  .copia-tabla .col-importe input { font-size: .98rem; padding-right: 1.7rem; }
 }
