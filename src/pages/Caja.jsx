@@ -19,7 +19,7 @@ export function precargarDatosCaja() {
   supabase.from('contadores').select('id,nombre,activo').order('nombre').then(() => {})
 }
 
-export default function Caja({ perfil, config, esTesorero, puede }) {
+export default function Caja({ perfil, config, esTesorero, puede, ir }) {
   const [contadores, setContadores] = useState([])
   const [contaron, setContaron] = useState([])
   const [persona, setPersona] = useState('')
@@ -290,12 +290,22 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
             ))}
           </div>
         </div>
-        <label className="campo">
+        {/* Botones de impresión arriba: se usan al terminar de registrar y así no se pierden de vista */}
+        <div className="caja-acciones">
+          <button type="button" className="btn btn-suave" onClick={abrirReporte}>Reporte del culto</button>
+          {puede('reporte_mensual') && (
+            <button type="button" className="btn btn-suave" onClick={() => ir('reportes', 'mensuales')}>Ingresos mensuales</button>
+          )}
+        </div>
+        <label className="campo caja-grupo">
           <span className="campo-etiqueta">Grupo</span>
           <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
             onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)}
             onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'grupos_ingreso', texto }) : undefined} etiquetaNuevo="Nuevo grupo" />
         </label>
+      </div>
+
+      <div className="caja-contaron">
         <div className="campo campo-contaron">
           <span className="campo-etiqueta">Contaron en este culto</span>
           {cerrado !== false ? <div className="contaron-caja"><span className="tenue">—</span></div> : <div className="contaron-caja">
@@ -417,14 +427,13 @@ export default function Caja({ perfil, config, esTesorero, puede }) {
               </li>
             ))}
           </ol>
-          <button className="btn btn-suave btn-ancho ver-reporte" onClick={abrirReporte}>Ver e imprimir reporte del culto</button>
-          {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} datosLocales={reporteLocal} />}
           {!puede('ingresos') && !perfil.ver_historial && (
             <p className="tenue nota">Ves solo los ingresos que has registrado tú.</p>
           )}
         </div>
       </div>
       )}
+      {reporte && <ReporteCulto fecha={fecha} turno={turno} config={config} onCerrar={() => setReporte(false)} datosLocales={reporteLocal} />}
       {alta && (
         <NuevoRegistro catalogo={alta.catalogo} texto={alta.texto} onCerrar={() => setAlta(null)}
           onCreado={(fila) => {
