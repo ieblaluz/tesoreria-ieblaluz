@@ -290,22 +290,6 @@ export default function Caja({ perfil, config, esTesorero, puede, ir }) {
             ))}
           </div>
         </div>
-        {/* Botones de impresión arriba: se usan al terminar de registrar y así no se pierden de vista */}
-        <div className="caja-acciones">
-          <button type="button" className="btn btn-suave" onClick={abrirReporte}>Reporte del culto</button>
-          {puede('reporte_mensual') && (
-            <button type="button" className="btn btn-suave" onClick={() => ir('reportes', 'mensuales')}>Ingresos mensuales</button>
-          )}
-        </div>
-        <label className="campo caja-grupo">
-          <span className="campo-etiqueta">Grupo</span>
-          <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
-            onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)}
-            onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'grupos_ingreso', texto }) : undefined} etiquetaNuevo="Nuevo grupo" />
-        </label>
-      </div>
-
-      <div className="caja-contaron">
         <div className="campo campo-contaron">
           <span className="campo-etiqueta">Contaron en este culto</span>
           {cerrado !== false ? <div className="contaron-caja"><span className="tenue">—</span></div> : <div className="contaron-caja">
@@ -329,6 +313,19 @@ export default function Caja({ perfil, config, esTesorero, puede, ir }) {
           </div>}
           {!esTesorero && !perfil.contador_id && <span className="campo-error">Tu usuario no está vinculado a un contador. Avisa al tesorero.</span>}
         </div>
+        {/* Botones de impresión arriba: se usan al terminar de registrar y así no se pierden de vista */}
+        <div className="caja-acciones">
+          <button type="button" className="btn btn-suave" onClick={abrirReporte}>Reporte del culto</button>
+          {puede('reporte_mensual') && (
+            <button type="button" className="btn btn-suave" onClick={() => ir('reportes', 'mensuales')}>Ingresos mensuales</button>
+          )}
+        </div>
+        <label className="campo caja-grupo">
+          <span className="campo-etiqueta">Grupo</span>
+          <Combobox opciones={grupos.map((g) => ({ id: g.id, etiqueta: g.nombre }))} valor={grupoId}
+            onCambio={setGrupoId} onElegido={() => setTimeout(() => refBusca.current?.focus(), 0)}
+            onNuevo={altaPermitida ? (texto) => setAlta({ catalogo: 'grupos_ingreso', texto }) : undefined} etiquetaNuevo="Nuevo grupo" />
+        </label>
       </div>
 
       {fecha < hoy() && cerrado === false && (
