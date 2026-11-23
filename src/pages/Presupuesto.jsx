@@ -3,6 +3,18 @@ import { supabase, dinero, aNumero, mensajeError } from '../supabase'
 import { Aviso, Campo, Modal, Cargando, InputMonto, fmtMonto } from '../components/ui'
 import useConfirmar from '../components/Confirmar'
 
+// Redondeo del importe resultante tras aplicar el porcentaje
+const REDONDEOS = [
+  { id: 'centimo', etiqueta: 'Al céntimo', paso: 0.01 },
+  { id: 'euro', etiqueta: 'Al euro', paso: 1 },
+  { id: 'cinco', etiqueta: 'A 5 €', paso: 5 },
+  { id: 'diez', etiqueta: 'A 10 €', paso: 10 },
+]
+const redondear = (n, id) => {
+  const paso = REDONDEOS.find((r) => r.id === id)?.paso || 0.01
+  return Math.round(n / paso) * paso
+}
+
 export default function Presupuesto() {
   const anioActual = new Date().getFullYear()
   const [anio, setAnio] = useState(anioActual)
@@ -10,6 +22,7 @@ export default function Presupuesto() {
   const [filas, setFilas] = useState(null)
   const [subcuentas, setSubcuentas] = useState([])
   const [editando, setEditando] = useState(null)
+  const [copia, setCopia] = useState(null)
   const [msg, setMsg] = useState(null)
   const [confirmar, dialogo] = useConfirmar()
 
@@ -69,15 +82,18 @@ export default function Presupuesto() {
     setEditando(null); cargar()
   }
 
-  async function copiar() {
-    const destino = anio + 1
-    const r = await confirmar({ titulo: `¿Copiar a ${destino}?`, textoSi: 'Sí, copiar', pin: true,
-      mensaje: <>Se copiarán las partidas de <b>{anio}</b> a <b>{destino}</b>. Las que ya existan en {destino} no se tocan.</> })
-    if (!r) return
-    const { data, error } = await supabase.rpc('copiar_presupuesto', { p_origen: anio, p_destino: destino, p_pin: r.pin })
-    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
-    setMsg({ t: 'ok', m: `Se copiaron ${data} partidas a ${destino}.` })
-    await cargarAnios(); setAnio(destino)
+  // Abre la ventana de copiar a otro año o de ajustar el año en curso
+  function abrirCopia(modo) {
+    setMsg(null)
+    setCopia({
+      modo, destino: modo === 'copiar' ? anio + 1 : anio, porcentaje: '', redondeo: 'centimo',
+      lineas: (filas || []).map((f) => ({
+        subcuenta_id: f.subcuenta_id, etiqueta: `${f.nro_subcuenta} · ${f.subcuenta}`,
+        ministerio: `${f.nro_cuenta} · ${f.ministerio}`, base: Number(f.monto),
+        monto: fmtMonto(f.monto), incluir: true,
+      })),
+      existentes: new Set(), cargando: modo === 'copiar',
+    })
   }
 
   const usadas = new Set((filas || []).map((f) => f.subcuenta_id))
@@ -91,7 +107,8 @@ export default function Presupuesto() {
           {anios.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
         <span className="espacio" />
-        <button className="btn btn-suave" onClick={copiar} disabled={!filas?.length}>Copiar a {anio + 1}</button>
+        <button className="btn btn-suave" onClick={() => abrirCopia('ajustar')} disabled={!filas?.length}>Ajustar %</button>
+        <button className="btn btn-suave" onClick={() => abrirCopia('copiar')} disabled={!filas?.length}>Copiar a otro año</button>
         <button className="btn btn-primario" onClick={() => setEditando({ subcuenta_id: '', monto: '', comentario: '' })}>Añadir partida</button>
       </div>
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
@@ -149,7 +166,185 @@ export default function Presupuesto() {
           </form>
         </Modal>
       )}
+
+      {copia && (
+        <VentanaCopia copia={copia} setCopia={setCopia} anio={anio} anios={anios} confirmar={confirmar}
+          onHecho={async (destino, texto) => {
+            setCopia(null); setMsg({ t: 'ok', m: texto })
+            await cargarAnios()
+            if (destino !== anio) setAnio(destino); else cargar()
+          }}
+          onError={(m) => setMsg({ t: 'error', m })} />
+      )}
       {dialogo}
     </section>
+  )
+}
+
+// ---------- Copiar a otro año / ajustar un porcentaje ----------
+function VentanaCopia({ copia, setCopia, anio, anios, confirmar, onHecho, onError }) {
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const esCopia = copia.modo === 'copiar'
+  const cambiar = (c) => setCopia((p) => ({ ...p, ...c }))
+
+  // Al copiar, se mira qué subcuentas ya tienen partida en el año destino: esas no se tocan
+  useEffect(() => {
+    if (!esCopia) return
+    let vigente = true
+    cambiar({ cargando: true })
+    supabase.from('presupuestos').select('subcuenta_id').eq('anio', copia.destino).then(({ data }) => {
+      if (!vigente) return
+      cambiar({ existentes: new Set((data || []).map((x) => x.subcuenta_id)), cargando: false })
+    })
+    return () => { vigente = false }
+  }, [esCopia, copia.destino])
+
+  const aplicable = (l) => !(esCopia && copia.existentes.has(l.subcuenta_id))
+
+  // Aplica el porcentaje a todas las partidas que siguen marcadas
+  function aplicarPorcentaje() {
+    const p = aNumero(copia.porcentaje)
+    if (!Number.isFinite(p)) return setError('Escribe un porcentaje válido.')
+    setError('')
+    cambiar({
+      lineas: copia.lineas.map((l) => (l.incluir && aplicable(l)
+        ? { ...l, monto: fmtMonto(Math.max(0, redondear(l.base * (1 + p / 100), copia.redondeo))) }
+        : l)),
+    })
+  }
+
+  function cambiarLinea(id, c) {
+    cambiar({ lineas: copia.lineas.map((l) => (l.subcuenta_id === id ? { ...l, ...c } : l)) })
+  }
+
+  const activas = copia.lineas.filter((l) => l.incluir && aplicable(l))
+  const totalBase = activas.reduce((s, l) => s + l.base, 0)
+  const totalNuevo = activas.reduce((s, l) => s + (aNumero(l.monto) || 0), 0)
+  const diferencia = totalNuevo - totalBase
+  const yaExisten = copia.lineas.filter((l) => !aplicable(l)).length
+
+  async function guardarTodo() {
+    if (!activas.length) return setError('No hay ninguna partida marcada.')
+    const malas = activas.filter((l) => !(aNumero(l.monto) >= 0))
+    if (malas.length) return setError(`Revisa el importe de «${malas[0].etiqueta}».`)
+    setError('')
+    const r = await confirmar({
+      titulo: esCopia ? `¿Copiar a ${copia.destino}?` : `¿Ajustar el presupuesto ${copia.destino}?`,
+      textoSi: esCopia ? 'Sí, copiar' : 'Sí, ajustar', pin: true,
+      mensaje: esCopia
+        ? <>Se crearán <b>{activas.length}</b> partidas en <b>{copia.destino}</b> por un total de <b>{dinero(totalNuevo)}</b>.{yaExisten > 0 && <> Las {yaExisten} que ya existen en {copia.destino} no se tocan.</>}</>
+        : <>Se actualizarán <b>{activas.length}</b> partidas de <b>{copia.destino}</b>. El total pasa de <b>{dinero(totalBase)}</b> a <b>{dinero(totalNuevo)}</b>.</>,
+    })
+    if (!r) return
+    setGuardando(true)
+    const { data, error: e } = await supabase.rpc('presupuesto_aplicar', {
+      p_pin: r.pin, p_anio: copia.destino, p_solo_nuevas: esCopia,
+      p_lineas: activas.map((l) => ({ subcuenta_id: l.subcuenta_id, monto: Math.round(aNumero(l.monto) * 100) / 100 })),
+    })
+    setGuardando(false)
+    if (e) return onError(mensajeError(e))
+    onHecho(copia.destino, esCopia
+      ? `Se copiaron ${data} partidas a ${copia.destino}.`
+      : `Se actualizaron ${data} partidas de ${copia.destino}.`)
+  }
+
+  return (
+    <Modal titulo={esCopia ? `Copiar el presupuesto de ${anio}` : `Ajustar el presupuesto ${anio}`}
+      onCerrar={() => setCopia(null)} ancho="980px">
+      <div className="copia-pres">
+        <div className="copia-mandos">
+          {esCopia && (
+            <Campo etiqueta="Año destino">
+              <select value={copia.destino} onChange={(e) => cambiar({ destino: Number(e.target.value) })}>
+                {[anio + 1, anio + 2, ...anios.filter((a) => a !== anio + 1 && a !== anio + 2)]
+                  .filter((a) => a !== anio).map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </Campo>
+          )}
+          <Campo etiqueta="Aumentar un %">
+            <input inputMode="decimal" value={copia.porcentaje} placeholder="0"
+              onChange={(e) => cambiar({ porcentaje: e.target.value })} />
+          </Campo>
+          <Campo etiqueta="Redondear">
+            <select value={copia.redondeo} onChange={(e) => cambiar({ redondeo: e.target.value })}>
+              {REDONDEOS.map((r) => <option key={r.id} value={r.id}>{r.etiqueta}</option>)}
+            </select>
+          </Campo>
+          <div className="campo-check">
+            <button type="button" className="btn btn-suave" onClick={aplicarPorcentaje}>Aplicar a todas</button>
+          </div>
+        </div>
+        <p className="tenue nota">
+          Escribe el porcentaje y pulsa «Aplicar a todas». Puedes usar un número negativo para recortar.
+          Después corrige a mano las partidas que necesiten otro importe, o desmárcalas para dejarlas fuera.
+          {esCopia && yaExisten > 0 && ` ${yaExisten} subcuentas ya tienen partida en ${copia.destino} y no se tocan.`}
+        </p>
+        <Aviso onCerrar={() => setError('')}>{error}</Aviso>
+
+        {copia.cargando ? <Cargando /> : (
+          <div className="tabla-envoltura copia-tabla">
+            <table className="tabla">
+              <thead>
+                <tr>
+                  <th className="col-check"> </th>
+                  <th>Subcuenta</th>
+                  <th className="num">{esCopia ? `Importe ${anio}` : 'Importe actual'}</th>
+                  <th className="num">Importe nuevo</th>
+                  <th className="num">Dif.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {copia.lineas.map((l) => {
+                  const fuera = !aplicable(l)
+                  const nuevo = aNumero(l.monto) || 0
+                  return (
+                    <tr key={l.subcuenta_id} className={fuera || !l.incluir ? 'fila-apagada' : ''}>
+                      <td className="col-check">
+                        <input type="checkbox" checked={l.incluir && !fuera} disabled={fuera}
+                          onChange={(e) => cambiarLinea(l.subcuenta_id, { incluir: e.target.checked })}
+                          aria-label={`Incluir ${l.etiqueta}`} />
+                      </td>
+                      <td>
+                        {l.etiqueta}
+                        <small className="tenue bloque">{l.ministerio}{fuera && ` · ya existe en ${copia.destino}`}</small>
+                      </td>
+                      <td className="num">{dinero(l.base)}</td>
+                      <td className="num col-importe">
+                        {fuera || !l.incluir ? <span className="tenue">{dinero(l.base)}</span> : (
+                          <InputMonto value={l.monto} onChange={(v) => cambiarLinea(l.subcuenta_id, { monto: v })} />
+                        )}
+                      </td>
+                      <td className={'num' + (nuevo - l.base < 0 ? ' neg' : '')}>
+                        {fuera || !l.incluir ? '–' : dinero(nuevo - l.base)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan="2">{activas.length} partidas</td>
+                  <td className="num">{dinero(totalBase)}</td>
+                  <td className="num">{dinero(totalNuevo)}</td>
+                  <td className={'num' + (diferencia < 0 ? ' neg' : '')}>
+                    {dinero(diferencia)}
+                    {totalBase > 0 && <small className="tenue bloque">{(diferencia / totalBase * 100).toFixed(2).replace('.', ',')} %</small>}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+
+        <div className="botonera">
+          <span className="espacio" />
+          <button type="button" className="btn btn-suave" onClick={() => setCopia(null)}>Cancelar</button>
+          <button type="button" className="btn btn-primario" disabled={guardando || copia.cargando} onClick={guardarTodo}>
+            {guardando ? 'Guardando…' : esCopia ? `Copiar a ${copia.destino}` : 'Guardar ajuste'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 }
