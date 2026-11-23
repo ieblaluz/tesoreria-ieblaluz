@@ -744,3 +744,21 @@ th.ordenable:hover { color: var(--primario); }
   .copia-tabla .col-importe { width: 140px; }
   .copia-tabla .col-importe input { font-size: .98rem; padding-right: 1.7rem; }
 }
+
+/* ---------- Caja: cabecera fija con los botones de imprimir ---------- */
+.caja-culto {
+  position: sticky; top: var(--alto-barra); z-index: 20;
+  grid-template-columns: 170px auto 1fr;
+  gap: .75rem 1rem; align-items: end;
+  padding: .75rem 0 .85rem; margin-bottom: .9rem;
+  background: var(--fondo); border-bottom: 1px solid var(--linea);
+}
+.caja-culto .caja-acciones { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.caja-culto .caja-grupo { grid-column: 1 / -1; max-width: 420px; }
+.caja-contaron { margin-bottom: 1.25rem; }
+@media (max-width: 900px) {
+  .caja-culto { top: calc(54px + env(safe-area-inset-top)); grid-template-columns: 1fr 1fr; }
+  .caja-culto .caja-acciones { grid-column: 1 / -1; justify-content: stretch; }
+  .caja-culto .caja-acciones .btn { flex: 1 1 140px; }
+  .caja-culto .caja-grupo { max-width: none; }
+}
