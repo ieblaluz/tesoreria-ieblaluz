@@ -722,3 +722,20 @@ th.ordenable:hover { color: var(--primario); }
   .doc-seccion.doc-modelo.doc-kardex .doc-tabla thead th { font-size: 6.8pt; padding: 2pt 1pt; }
   .doc-seccion.doc-modelo.doc-kardex .doc-tabla tbody td { height: 11.6pt; }
 }
+
+/* ---------- Copiar / ajustar el presupuesto ---------- */
+.copia-pres { display: grid; gap: .5rem; }
+.copia-mandos { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
+.copia-mandos .campo { min-width: 140px; }
+.copia-tabla { max-height: 46vh; overflow: auto; }
+.copia-tabla thead th { position: sticky; top: 0; z-index: 1; background: var(--papel, #fff); }
+.copia-tabla .col-check { width: 34px; text-align: center; }
+.copia-tabla .col-importe { width: 150px; }
+.copia-tabla .col-importe input { text-align: right; min-height: 34px; padding: .25rem .5rem; }
+.copia-tabla tr.fila-apagada td { color: var(--tenue); }
+.bloque { display: block; font-size: .8rem; }
+@media (max-width: 760px) {
+  .copia-mandos .campo { min-width: 0; flex: 1 1 130px; }
+  .copia-tabla { max-height: 50vh; }
+  .copia-tabla .col-importe { width: 110px; }
+}
