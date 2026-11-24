@@ -764,3 +764,8 @@ th.ordenable:hover { color: var(--primario); }
   .caja-culto .caja-acciones .btn { flex: 1 1 140px; }
   .caja-culto .caja-grupo { max-width: none; }
 }
+
+/* ---------- Presupuesto: selección por lotes ---------- */
+.presupuesto .col-check { width: 36px; text-align: center; }
+.presupuesto .col-check input { width: 17px; height: 17px; cursor: pointer; }
+.presupuesto tr.fila-marcada > td { background: color-mix(in srgb, var(--primario) 8%, transparent); }
