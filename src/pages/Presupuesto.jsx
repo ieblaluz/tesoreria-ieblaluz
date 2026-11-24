@@ -261,6 +261,14 @@ function VentanaCopia({ copia, setCopia, anio, anios, confirmar, onHecho, onErro
   const esCopia = copia.modo === 'copiar'
   const cambiar = (c) => setCopia((p) => ({ ...p, ...c }))
 
+  // Años a los que se puede copiar: los diez siguientes, los años que ya tienen
+  // presupuesto y también los anteriores, por si hay que rellenar un año pasado
+  const aniosDestino = useMemo(() => {
+    const s = new Set(anios)
+    for (let a = anio - 3; a <= anio + 10; a++) s.add(a)
+    return [...s].filter((a) => a !== anio).sort((x, y) => x - y)
+  }, [anios, anio])
+
   // Al copiar, se mira qué subcuentas ya tienen partida en el año destino: esas no se tocan
   useEffect(() => {
     if (!esCopia) return
@@ -330,8 +338,7 @@ function VentanaCopia({ copia, setCopia, anio, anios, confirmar, onHecho, onErro
           {esCopia && (
             <Campo etiqueta="Año destino">
               <select value={copia.destino} onChange={(e) => cambiar({ destino: Number(e.target.value) })}>
-                {[anio + 1, anio + 2, ...anios.filter((a) => a !== anio + 1 && a !== anio + 2)]
-                  .filter((a) => a !== anio).map((a) => <option key={a} value={a}>{a}</option>)}
+                {aniosDestino.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </Campo>
           )}
