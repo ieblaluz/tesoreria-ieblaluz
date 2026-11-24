@@ -23,6 +23,7 @@ export default function Presupuesto() {
   const [subcuentas, setSubcuentas] = useState([])
   const [editando, setEditando] = useState(null)
   const [copia, setCopia] = useState(null)
+  const [sel, setSel] = useState(null) // null = sin seleccionar · Set de ids cuando está activo
   const [msg, setMsg] = useState(null)
   const [confirmar, dialogo] = useConfirmar()
 
@@ -99,6 +100,35 @@ export default function Presupuesto() {
   const usadas = new Set((filas || []).map((f) => f.subcuenta_id))
   const pct = (e, m) => (m > 0 ? Math.min(100, (e / m) * 100) : e > 0 ? 100 : 0)
 
+  // ---- Selección por lotes para quitar varias partidas de una vez ----
+  const seleccionando = sel !== null
+  const marcada = (id) => !!sel?.has(id)
+  const alternar = (ids, poner) => setSel((p) => {
+    const s = new Set(p)
+    ids.forEach((id) => (poner ? s.add(id) : s.delete(id)))
+    return s
+  })
+  const idsTodos = (filas || []).map((f) => f.id)
+  const seleccionadas = (filas || []).filter((f) => marcada(f.id))
+  const totalSel = seleccionadas.reduce((s, f) => s + Number(f.monto), 0)
+  const conGasto = seleccionadas.filter((f) => Number(f.ejecutado) > 0).length
+
+  async function borrarLote() {
+    if (!seleccionadas.length) return
+    const r = await confirmar({
+      titulo: `¿Quitar ${seleccionadas.length} ${seleccionadas.length === 1 ? 'partida' : 'partidas'}?`,
+      textoSi: 'Sí, quitar', peligro: true, pin: true,
+      mensaje: <>Se quitarán del presupuesto {anio} por un total de <b>{dinero(totalSel)}</b>.
+        {conGasto > 0 && <> {conGasto} {conGasto === 1 ? 'tiene' : 'tienen'} gastos registrados; esos gastos <b>no se borran</b>.</>}</>,
+    })
+    if (!r) return
+    const { data, error } = await supabase.rpc('presupuesto_borrar_lote', {
+      p_pin: r.pin, p_ids: seleccionadas.map((f) => f.id) })
+    if (error) return setMsg({ t: 'error', m: mensajeError(error) })
+    setSel(null); setMsg({ t: 'ok', m: `Se quitaron ${data} partidas del presupuesto ${anio}.` })
+    cargar(); cargarAnios()
+  }
+
   return (
     <section className="pagina con-tabla">
       <div className="titulo-accion">
@@ -107,10 +137,28 @@ export default function Presupuesto() {
           {anios.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
         <span className="espacio" />
-        <button className="btn btn-suave" onClick={() => abrirCopia('ajustar')} disabled={!filas?.length}>Ajustar %</button>
-        <button className="btn btn-suave" onClick={() => abrirCopia('copiar')} disabled={!filas?.length}>Copiar a otro año</button>
-        <button className="btn btn-primario" onClick={() => setEditando({ subcuenta_id: '', monto: '', comentario: '' })}>Añadir partida</button>
+        {seleccionando ? (
+          <>
+            <button className="btn btn-suave" onClick={() => setSel(null)}>Cancelar selección</button>
+            <button className="btn btn-peligro" onClick={borrarLote} disabled={!seleccionadas.length}>
+              Quitar {seleccionadas.length || ''} {seleccionadas.length === 1 ? 'partida' : 'partidas'}
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="btn btn-suave" onClick={() => setSel(new Set())} disabled={!filas?.length}>Seleccionar</button>
+            <button className="btn btn-suave" onClick={() => abrirCopia('ajustar')} disabled={!filas?.length}>Ajustar %</button>
+            <button className="btn btn-suave" onClick={() => abrirCopia('copiar')} disabled={!filas?.length}>Copiar a otro año</button>
+            <button className="btn btn-primario" onClick={() => setEditando({ subcuenta_id: '', monto: '', comentario: '' })}>Añadir partida</button>
+          </>
+        )}
       </div>
+      {seleccionando && (
+        <p className="tenue nota">
+          Marca las partidas que quieras quitar. La casilla de un ministerio marca todas sus subcuentas.
+          {seleccionadas.length > 0 && <> Seleccionadas: <b>{seleccionadas.length}</b> · <b>{dinero(totalSel)}</b>.</>}
+        </p>
+      )}
       <Aviso tipo={msg?.t} onCerrar={() => setMsg(null)}>{msg?.m}</Aviso>
 
       {!filas ? <Cargando /> : filas.length === 0 ? (
@@ -118,17 +166,42 @@ export default function Presupuesto() {
       ) : (
         <div className="tabla-envoltura">
           <table className="tabla presupuesto">
-            <thead><tr><th>Subcuenta</th><th className="num">Presupuestado</th><th className="num">Ejecutado</th><th className="num">Diferencia</th><th className="col-avance">Avance</th></tr></thead>
+            <thead><tr>
+              {seleccionando && (
+                <th className="col-check">
+                  <input type="checkbox" aria-label="Seleccionar todas"
+                    checked={!!filas.length && seleccionadas.length === filas.length}
+                    onChange={(e) => alternar(idsTodos, e.target.checked)} />
+                </th>
+              )}
+              <th>Subcuenta</th><th className="num">Presupuestado</th><th className="num">Ejecutado</th><th className="num">Diferencia</th><th className="col-avance">Avance</th>
+            </tr></thead>
             {grupos.map((c) => (
               <tbody key={c.nro}>
                 <tr className="fila-cuenta">
+                  {seleccionando && (
+                    <td className="col-check">
+                      <input type="checkbox" aria-label={`Seleccionar ${c.nombre}`}
+                        checked={c.filas.every((f) => marcada(f.id))}
+                        onChange={(e) => alternar(c.filas.map((f) => f.id), e.target.checked)} />
+                    </td>
+                  )}
                   <td>{c.nro} · {c.nombre}</td><td className="num">{dinero(c.monto)}</td>
                   <td className="num">{dinero(c.ejecutado)}</td>
                   <td className={'num' + (c.monto - c.ejecutado < 0 ? ' neg' : '')}>{dinero(c.monto - c.ejecutado)}</td>
                   <td className="col-avance"><span className="avance"><span style={{ width: `${pct(c.ejecutado, c.monto)}%` }} /></span></td>
                 </tr>
                 {c.filas.map((f) => (
-                  <tr key={f.id} className="clic" onClick={() => setEditando({ id: f.id, subcuenta_id: f.subcuenta_id, monto: fmtMonto(f.monto), comentario: f.comentario || '' })}>
+                  <tr key={f.id} className={'clic' + (marcada(f.id) ? ' fila-marcada' : '')}
+                    onClick={() => (seleccionando
+                      ? alternar([f.id], !marcada(f.id))
+                      : setEditando({ id: f.id, subcuenta_id: f.subcuenta_id, monto: fmtMonto(f.monto), comentario: f.comentario || '' }))}>
+                    {seleccionando && (
+                      <td className="col-check">
+                        <input type="checkbox" checked={marcada(f.id)} readOnly tabIndex={-1}
+                          aria-label={`Seleccionar ${f.subcuenta}`} />
+                      </td>
+                    )}
                     <td className="sangria">{f.nro_subcuenta} · {f.subcuenta}</td>
                     <td className="num">{dinero(f.monto)}</td><td className="num">{dinero(f.ejecutado)}</td>
                     <td className={'num' + (Number(f.diferencia) < 0 ? ' neg' : '')}>{dinero(f.diferencia)}</td>
@@ -137,7 +210,7 @@ export default function Presupuesto() {
                 ))}
               </tbody>
             ))}
-            <tfoot><tr><td>Total {anio}</td><td className="num">{dinero(tot.monto)}</td><td className="num">{dinero(tot.ejecutado)}</td>
+            <tfoot><tr>{seleccionando && <td className="col-check" />}<td>Total {anio}</td><td className="num">{dinero(tot.monto)}</td><td className="num">{dinero(tot.ejecutado)}</td>
               <td className="num">{dinero(tot.monto - tot.ejecutado)}</td><td /></tr></tfoot>
           </table>
         </div>
